@@ -56,9 +56,9 @@ CRITICAL NON-NEGOTIABLE RULES:
 3. Keep all cue numbers and timestamps (00:00:00,000 --> 00:00:00,000) 100% EXACTLY unchanged.
 4. Output ONLY valid raw SRT content, with no markdown code blocks (\`\`\`), no preamble, and no conversational explanation.`;
 
-  // 1. Try Groq with llama-3.3-70b-versatile, fallback to qwen
+  // 1. Try Groq with ultra-fast llama-3.1-8b-instant, then llama-3.3-70b-versatile
   if (groqApiKey) {
-    const groqModels = ["llama-3.3-70b-versatile", "qwen/qwen3.8-27b", "qwen/qwen-2.5-32b"];
+    const groqModels = ["llama-3.1-8b-instant", "llama-3.3-70b-versatile"];
     for (const model of groqModels) {
       try {
         const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -211,82 +211,8 @@ export async function POST(req: NextRequest) {
           ? "CRITICAL REQUIREMENT: Translate the spoken speech into clear, fluent English subtitles in standard SRT format."
           : "Transcribe the audio speech verbatim with natural code-switching.";
 
-      // Try Gemini 3.5 Transcribe if selected
-      if (engine === "gemini-3.5-transcribe") {
-        try {
-          const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-transcribe:generateContent?key=${finalGeminiKey}`;
-          const targetLangCodes =
-            scriptStyle === "english"
-              ? ["en-US"]
-              : scriptStyle === "devanagari"
-              ? ["hi-IN", "hi"]
-              : undefined;
-
-          const geminiPayload = {
-            contents: [
-              {
-                parts: [
-                  { text: scriptInstruction },
-                  {
-                    inlineData: {
-                      mimeType: "audio/mp3",
-                      data: audioBase64,
-                    },
-                  },
-                ],
-              },
-            ],
-            generationConfig: {
-              audio_transcription_config: {
-                language_codes: targetLangCodes,
-                mode: "VERBATIM",
-                word_timestamp: true,
-                diarization: false,
-              },
-            },
-          };
-
-          const geminiRes = await fetch(apiUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(geminiPayload),
-          });
-
-          if (geminiRes.ok) {
-            const geminiData = await geminiRes.json();
-            const transcriptionMeta =
-              geminiData.audio_transcription ||
-              geminiData.candidates?.[0]?.audio_transcription;
-
-            if (transcriptionMeta?.words && Array.isArray(transcriptionMeta.words)) {
-              const words = transcriptionMeta.words.map((w: any) => ({
-                word: w.word || "",
-                start: parseFloat(w.start_offset || w.start || 0),
-                end: parseFloat(w.end_offset || w.end || 0),
-              }));
-              if (words.length > 0) {
-                generatedSrt = generateCustomSrt({ words }, {
-                  maxWordsPerLine,
-                  minWordsPerLine,
-                  targetWordsPerLine,
-                  ignoreDuration,
-                });
-              }
-            } else {
-              const textPart = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-              if (textPart && textPart.includes("-->")) {
-                generatedSrt = textPart.replace(/^```[a-z]*\n?/i, "").replace(/```$/i, "").trim();
-              }
-            }
-          }
-        } catch (e) {
-          console.warn("[Gemini 3.5 Transcribe attempt failed, falling back to Gemini 2.5 Flash]:", e);
-        }
-      }
-
-      // If not yet generated (or engine is gemini-2.5-flash), use Gemini 2.5 Flash
-      if (!generatedSrt) {
-        const flashUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${finalGeminiKey}`;
+      const geminiModel = engine === "gemini-1.5-flash" ? "gemini-1.5-flash" : "gemini-2.5-flash";
+      const flashUrl = `https://generativelanguage.googleapis.com/v1beta/models/${geminiModel}:generateContent?key=${finalGeminiKey}`;
         const flashPayload = {
           contents: [
             {
@@ -338,7 +264,6 @@ FORMATTING REQUIREMENTS:
           return NextResponse.json({ error: "Gemini did not return any subtitle text from the audio" }, { status: 400 });
         }
         generatedSrt = rawOutput.replace(/^```[a-z]*\n?/i, "").replace(/```$/i, "").trim();
-      }
 
       let finalSrt = enforceSrtLimits(generatedSrt, {
         maxWordsPerLine,

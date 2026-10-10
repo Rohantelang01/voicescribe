@@ -34,11 +34,13 @@ import { saveAudioToQueue, saveSrtToQueue } from "@/lib/audio-storage";
 import { generateSmartTitle } from "@/lib/title-generator";
 
 export interface UploadProgressState {
-  stage: "idle" | "uploading" | "processing" | "transcribing" | "finalizing" | "done" | "error";
+  stage: "idle" | "uploading" | "processing" | "transcribing" | "formatting" | "finalizing" | "done" | "error";
   percent: number;
   loadedMB: number;
   totalMB: number;
   elapsedSec: number;
+  currentStepIndex: number;
+  stepDetail: string;
   smartTitle?: string;
 }
 
@@ -122,7 +124,7 @@ export default function AudioToSrtTab({
 }: AudioToSrtTabProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(initialFile || null);
   const [engine, setEngine] = useState<
-    "groq-whisper-turbo" | "groq-whisper-v3" | "gemini-3.5-transcribe" | "gemini-2.5-flash"
+    "groq-whisper-turbo" | "groq-whisper-v3" | "gemini-2.5-flash" | "gemini-1.5-flash"
   >("groq-whisper-turbo");
   const [selectedProjectId, setSelectedProjectId] = useState(poolState.activeProjectId);
   const [scriptStyle, setScriptStyle] = useState<ScriptStyleType>("devanagari");
@@ -142,6 +144,8 @@ export default function AudioToSrtTab({
     loadedMB: 0,
     totalMB: 0,
     elapsedSec: 0,
+    currentStepIndex: 0,
+    stepDetail: "",
   });
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -234,7 +238,7 @@ export default function AudioToSrtTab({
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
       setError(null);
-      setProgressState({ stage: "idle", percent: 0, loadedMB: 0, totalMB: 0, elapsedSec: 0 });
+      setProgressState({ stage: "idle", percent: 0, loadedMB: 0, totalMB: 0, elapsedSec: 0, currentStepIndex: 0, stepDetail: "" });
     }
   };
 
@@ -266,6 +270,8 @@ export default function AudioToSrtTab({
       loadedMB: 0,
       totalMB: totalFileSizeMB,
       elapsedSec: 0,
+      currentStepIndex: 1,
+      stepDetail: `Uploading audio (${totalFileSizeMB} MB) to server...`,
     });
 
     try {
@@ -284,6 +290,16 @@ export default function AudioToSrtTab({
       const xhr = new XMLHttpRequest();
       let startTime = Date.now();
 
+      setProgressState({
+        stage: "uploading",
+        percent: 0,
+        loadedMB: 0,
+        totalMB: totalFileSizeMB,
+        elapsedSec: 0,
+        currentStepIndex: 1,
+        stepDetail: `Uploading audio (${totalFileSizeMB} MB) to server...`,
+      });
+
       // Track live upload progress
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
@@ -295,6 +311,8 @@ export default function AudioToSrtTab({
             percent,
             loadedMB,
             totalMB: totalFileSizeMB,
+            currentStepIndex: 1,
+            stepDetail: `Uploading: ${loadedMB} MB / ${totalFileSizeMB} MB (${percent}%)`,
           }));
         }
       };
@@ -306,15 +324,27 @@ export default function AudioToSrtTab({
           stage: "transcribing",
           percent: 100,
           loadedMB: totalFileSizeMB,
+          currentStepIndex: 3,
+          stepDetail: "Audio uploaded (100%)! AI model acoustic decoding in progress...",
         }));
 
         startTime = Date.now();
         if (timerRef.current) clearInterval(timerRef.current);
         timerRef.current = setInterval(() => {
           const sec = parseFloat(((Date.now() - startTime) / 1000).toFixed(1));
+          let detail = "AI Speech Model transcribing acoustic tokens...";
+          if (sec > 4 && sec <= 12) {
+            detail = "Recognizing Hindi speech phonetics & words...";
+          } else if (sec > 12 && sec <= 24) {
+            detail = "Aligning word-level timestamps (start & end offsets)...";
+          } else if (sec > 24) {
+            detail = "Formatting subtitle segments and syntax...";
+          }
+
           setProgressState((prev) => ({
             ...prev,
             elapsedSec: sec,
+            stepDetail: detail,
           }));
         }, 100);
       };
@@ -326,16 +356,25 @@ export default function AudioToSrtTab({
           try {
             const data = JSON.parse(xhr.responseText);
             setSrtResult(data.srtContent);
-            setViewMode("sync-preview");
+
+            // Step 4: Formatting
+            setProgressState((prev) => ({
+              ...prev,
+              stage: "formatting",
+              currentStepIndex: 4,
+              stepDetail: "Formatting subtitle cues & applying word limits...",
+            }));
 
             // Smart Unique Title Generation from Transcript
             const smartTitle = generateSmartTitle(data.srtContent, "Hindi Audio Subtitles");
             const parsedCues = parseSrtCues(data.srtContent);
 
+            // Step 5: Vault Save
             setProgressState((prev) => ({
               ...prev,
-              stage: "done",
-              percent: 100,
+              stage: "finalizing",
+              currentStepIndex: 5,
+              stepDetail: `Saving "${smartTitle}" to Asset Vault...`,
               smartTitle,
             }));
 
@@ -364,9 +403,19 @@ export default function AudioToSrtTab({
             } catch (storageErr) {
               console.warn("Failed to persist SRT to Asset Vault:", storageErr);
             }
+
+            setProgressState((prev) => ({
+              ...prev,
+              stage: "done",
+              percent: 100,
+              currentStepIndex: 5,
+              stepDetail: "All steps complete! Live Sync Preview active.",
+              smartTitle,
+            }));
+            setViewMode("sync-preview");
           } catch (parseErr: any) {
             setError("Failed to parse transcription response");
-            setProgressState((prev) => ({ ...prev, stage: "error" }));
+            setProgressState((prev) => ({ ...prev, stage: "error", stepDetail: "Failed to parse response" }));
           }
         } else {
           try {
@@ -375,7 +424,7 @@ export default function AudioToSrtTab({
           } catch {
             setError(`Transcription failed (${xhr.status})`);
           }
-          setProgressState((prev) => ({ ...prev, stage: "error" }));
+          setProgressState((prev) => ({ ...prev, stage: "error", stepDetail: "Transcription error occurred" }));
         }
         setIsProcessing(false);
       };
@@ -531,16 +580,16 @@ export default function AudioToSrtTab({
                 className="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-300 text-slate-800 text-xs font-medium focus:outline-none focus:border-amber-500"
               >
                 <option value="groq-whisper-turbo">
-                  Groq Whisper Large v3 Turbo (Ultra Fast &bull; Word-Level Timestamps)
+                  Groq Whisper Large v3 Turbo (Ultra Fast &bull; 2-5s &bull; Word Timestamps)
                 </option>
                 <option value="groq-whisper-v3">
                   Groq Whisper Large v3 (Maximum Accuracy &bull; Recommended for Hindi)
                 </option>
-                <option value="gemini-3.5-transcribe">
-                  Gemini 3.5 Transcribe (Google Dedicated ASR)
-                </option>
                 <option value="gemini-2.5-flash">
-                  Gemini 2.5 Flash (Direct Multimodal Subtitles &bull; Zero Hallucination)
+                  Google Gemini 2.5 Flash (Direct Multimodal Subtitles &bull; Zero Hallucination)
+                </option>
+                <option value="gemini-1.5-flash">
+                  Google Gemini 1.5 Flash (Fast Multimodal Subtitles)
                 </option>
               </select>
             </div>
@@ -665,7 +714,7 @@ export default function AudioToSrtTab({
 
             {/* Live Upload Progress & Stage Monitor Card */}
             {progressState.stage !== "idle" && (
-              <div className="p-3.5 rounded-xl border border-amber-300 bg-amber-500/10 space-y-2.5 animate-in fade-in duration-200">
+              <div className="p-3.5 rounded-xl border border-amber-300 bg-amber-500/10 space-y-3 animate-in fade-in duration-200">
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center gap-2">
                     {progressState.stage === "uploading" ? (
@@ -680,23 +729,23 @@ export default function AudioToSrtTab({
                       <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-600" />
                     )}
                     <span className="font-bold text-slate-900">
-                      {progressState.stage === "uploading" && `📤 Uploading Audio: ${progressState.percent}%`}
-                      {progressState.stage === "processing" && "⚡ Audio Uploaded (100%) • Processing..."}
-                      {progressState.stage === "transcribing" && "🤖 AI Model Transcribing Speech..."}
+                      {progressState.stage === "uploading" && `📤 Step 1/5: Uploading Audio (${progressState.percent}%)`}
+                      {progressState.stage === "processing" && "⚡ Step 2/5: Audio Ingestion..."}
+                      {progressState.stage === "transcribing" && "🤖 Step 3/5: AI Speech Recognition..."}
+                      {progressState.stage === "formatting" && "⏱️ Step 4/5: Aligning Timestamps..."}
+                      {progressState.stage === "finalizing" && "💾 Step 5/5: Syncing to Vault..."}
                       {progressState.stage === "done" && "✅ Subtitles Ready & Saved to Vault!"}
                       {progressState.stage === "error" && "❌ Transcription Error"}
                     </span>
                   </div>
 
-                  <div className="text-[11px] font-mono text-slate-600 font-medium">
-                    {progressState.stage === "uploading" && (
+                  <div className="text-[11px] font-mono text-slate-700 font-semibold">
+                    {progressState.stage === "uploading" ? (
                       <span>{progressState.loadedMB} MB / {progressState.totalMB} MB</span>
-                    )}
-                    {progressState.stage === "transcribing" && (
-                      <span className="text-amber-800 font-bold">⏱️ {progressState.elapsedSec}s elapsed</span>
-                    )}
-                    {progressState.stage === "done" && (
+                    ) : progressState.stage === "done" ? (
                       <span className="text-emerald-700 font-bold">Done ({progressState.elapsedSec}s)</span>
+                    ) : (
+                      <span className="text-amber-800 font-bold">⏱️ {progressState.elapsedSec}s</span>
                     )}
                   </div>
                 </div>
@@ -711,16 +760,56 @@ export default function AudioToSrtTab({
                         ? "bg-amber-500 w-full animate-pulse"
                         : progressState.stage === "error"
                         ? "bg-rose-500 w-full"
-                        : "bg-amber-500"
+                        : "bg-blue-500"
                     }`}
                     style={{
                       width:
                         progressState.stage === "uploading"
                           ? `${progressState.percent}%`
+                          : progressState.stage === "transcribing"
+                          ? `${Math.min(95, 35 + progressState.elapsedSec * 2.5)}%`
                           : "100%",
                     }}
                   />
                 </div>
+
+                {/* Step Pills Tracker */}
+                <div className="grid grid-cols-3 gap-1.5 text-[10px]">
+                  <div className={`p-1.5 rounded-lg border text-center font-medium ${
+                    progressState.currentStepIndex > 1
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-800 font-bold"
+                      : progressState.currentStepIndex === 1
+                      ? "bg-blue-50 border-blue-200 text-blue-800 font-bold animate-pulse"
+                      : "bg-slate-50 border-slate-200 text-slate-500"
+                  }`}>
+                    1. Upload {progressState.currentStepIndex > 1 ? "✓" : `${progressState.percent}%`}
+                  </div>
+
+                  <div className={`p-1.5 rounded-lg border text-center font-medium ${
+                    progressState.currentStepIndex > 3
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-800 font-bold"
+                      : progressState.currentStepIndex === 3
+                      ? "bg-amber-100 border-amber-300 text-amber-900 font-bold animate-pulse"
+                      : "bg-slate-50 border-slate-200 text-slate-500"
+                  }`}>
+                    2. AI Model {progressState.currentStepIndex > 3 ? "✓" : progressState.currentStepIndex === 3 ? "⟳" : "○"}
+                  </div>
+
+                  <div className={`p-1.5 rounded-lg border text-center font-medium ${
+                    progressState.currentStepIndex >= 4
+                      ? "bg-emerald-50 border-emerald-200 text-emerald-800 font-bold"
+                      : "bg-slate-50 border-slate-200 text-slate-500"
+                  }`}>
+                    3. Subtitles {progressState.stage === "done" ? "✓ Ready" : "○"}
+                  </div>
+                </div>
+
+                {/* Live Step Detail Notice */}
+                {progressState.stepDetail && (
+                  <p className="text-[11px] text-slate-600 font-medium italic">
+                    &bull; {progressState.stepDetail}
+                  </p>
+                )}
 
                 {progressState.smartTitle && (
                   <div className="flex items-center gap-1.5 text-[11px] text-amber-900 font-medium pt-1 border-t border-amber-200/50">
@@ -1035,6 +1124,271 @@ export default function AudioToSrtTab({
                   />
                 </div>
               )
+            ) : isProcessing ? (
+              /* ─── FULL-SCREEN MULTI-STEP PIPELINE TRACKER DASHBOARD ─── */
+              <div className="h-full flex flex-col justify-between p-6 sm:p-7 bg-slate-950 text-white select-none overflow-y-auto">
+                {/* 1. Header Banner with Live Stopwatch & Model Info */}
+                <div className="space-y-3 pb-3 border-b border-slate-800">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex items-center gap-2.5">
+                      <div className="relative flex items-center justify-center">
+                        <span className="w-3 h-3 rounded-full bg-amber-400 animate-ping absolute" />
+                        <span className="w-3 h-3 rounded-full bg-amber-500 relative" />
+                      </div>
+                      <h3 className="text-sm sm:text-base font-bold text-white tracking-wide">
+                        AI Subtitle Generation Pipeline Active
+                      </h3>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <span className="px-3 py-1 rounded-full bg-slate-900 border border-slate-700 text-amber-400 font-mono text-xs font-bold shadow-xs">
+                        ⏱️ {progressState.elapsedSec.toFixed(1)}s elapsed
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Badges / Specs row */}
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                    <span className="px-2 py-0.5 rounded-md bg-slate-900 text-slate-300 border border-slate-800">
+                      File: <b className="text-white">{selectedFile?.name || "audio.mp3"}</b> ({(selectedFile ? selectedFile.size / 1024 / 1024 : 0).toFixed(1)} MB)
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-slate-900 text-amber-300 border border-slate-800 font-semibold">
+                      Model: {engine === "groq-whisper-turbo" ? "Groq Whisper Large v3 Turbo" : engine === "groq-whisper-v3" ? "Groq Whisper Large v3" : "Google Gemini 2.5 Flash"}
+                    </span>
+                    <span className="px-2 py-0.5 rounded-md bg-slate-900 text-emerald-300 border border-slate-800">
+                      Script: {scriptStyle === "devanagari" ? "100% शुद्ध हिंदी (Devanagari)" : scriptStyle === "roman" ? "Reels Hinglish (Roman)" : scriptStyle === "english" ? "English Translation" : "Verbatim"}
+                    </span>
+                  </div>
+
+                  {/* Overall Pipeline Progress Bar */}
+                  <div className="space-y-1 pt-1">
+                    <div className="flex items-center justify-between text-[11px] text-slate-400 font-mono">
+                      <span>Overall Pipeline Progress</span>
+                      <span className="text-amber-400 font-bold">
+                        {progressState.stage === "uploading"
+                          ? `${Math.round(progressState.percent * 0.35)}%`
+                          : progressState.stage === "done"
+                          ? "100%"
+                          : `${Math.min(95, Math.round(35 + progressState.elapsedSec * 2.2))}%`}
+                      </span>
+                    </div>
+                    <div className="w-full bg-slate-900 rounded-full h-2 overflow-hidden border border-slate-800">
+                      <div
+                        className="h-full bg-gradient-to-r from-amber-500 via-amber-400 to-emerald-400 transition-all duration-300"
+                        style={{
+                          width:
+                            progressState.stage === "uploading"
+                              ? `${progressState.percent * 0.35}%`
+                              : progressState.stage === "done"
+                              ? "100%"
+                              : `${Math.min(95, 35 + progressState.elapsedSec * 2.2)}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. The 5 Pipeline Steps */}
+                <div className="space-y-2.5 py-3 flex-1 flex flex-col justify-center max-w-xl mx-auto w-full">
+                  {/* Step 1: Upload */}
+                  <div className={`p-2.5 sm:p-3 rounded-xl border flex items-center justify-between transition-all ${
+                    progressState.currentStepIndex === 1
+                      ? "bg-blue-500/10 border-blue-500/40 text-blue-200"
+                      : progressState.currentStepIndex > 1
+                      ? "bg-slate-900/60 border-emerald-500/30 text-slate-300"
+                      : "bg-slate-900/30 border-slate-800/60 text-slate-500"
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                        progressState.currentStepIndex > 1
+                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                          : progressState.currentStepIndex === 1
+                          ? "bg-blue-500/20 text-blue-400 border border-blue-500/40 animate-pulse"
+                          : "bg-slate-800 text-slate-600"
+                      }`}>
+                        {progressState.currentStepIndex > 1 ? "✓" : "1"}
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-white">1. Audio Upload to Server</h4>
+                        <p className="text-[11px] text-slate-400">
+                          {progressState.currentStepIndex === 1
+                            ? `Uploading ${progressState.percent}% (${progressState.loadedMB} MB / ${progressState.totalMB} MB)`
+                            : `Upload Completed (${progressState.totalMB} MB transferred)`}
+                        </p>
+                      </div>
+                    </div>
+                    {progressState.currentStepIndex === 1 && (
+                      <span className="text-xs font-mono font-bold text-blue-400 animate-pulse">
+                        {progressState.percent}%
+                      </span>
+                    )}
+                    {progressState.currentStepIndex > 1 && (
+                      <span className="text-xs font-semibold text-emerald-400">Done ✓</span>
+                    )}
+                  </div>
+
+                  {/* Step 2: Audio Ingestion & Decoding */}
+                  <div className={`p-2.5 sm:p-3 rounded-xl border flex items-center justify-between transition-all ${
+                    progressState.currentStepIndex === 2
+                      ? "bg-amber-500/10 border-amber-500/40 text-amber-200"
+                      : progressState.currentStepIndex > 2
+                      ? "bg-slate-900/60 border-emerald-500/30 text-slate-300"
+                      : "bg-slate-900/30 border-slate-800/60 text-slate-500"
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                        progressState.currentStepIndex > 2
+                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                          : progressState.currentStepIndex === 2
+                          ? "bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse"
+                          : "bg-slate-800 text-slate-600"
+                      }`}>
+                        {progressState.currentStepIndex > 2 ? "✓" : "2"}
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-white">2. Audio Decoding & Ingestion</h4>
+                        <p className="text-[11px] text-slate-400">
+                          {progressState.currentStepIndex > 2
+                            ? "Audio waveform decoded & primed for AI model"
+                            : progressState.currentStepIndex === 2
+                            ? "Verifying audio waveform & headers..."
+                            : "Waiting for upload to finish..."}
+                        </p>
+                      </div>
+                    </div>
+                    {progressState.currentStepIndex > 2 && (
+                      <span className="text-xs font-semibold text-emerald-400">Done ✓</span>
+                    )}
+                  </div>
+
+                  {/* Step 3: AI Speech Recognition */}
+                  <div className={`p-2.5 sm:p-3 rounded-xl border flex items-center justify-between transition-all ${
+                    progressState.currentStepIndex === 3
+                      ? "bg-amber-500/15 border-amber-500/50 text-amber-200 ring-1 ring-amber-500/30"
+                      : progressState.currentStepIndex > 3
+                      ? "bg-slate-900/60 border-emerald-500/30 text-slate-300"
+                      : "bg-slate-900/30 border-slate-800/60 text-slate-500"
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                        progressState.currentStepIndex > 3
+                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                          : progressState.currentStepIndex === 3
+                          ? "bg-amber-500/30 text-amber-300 border border-amber-500 animate-pulse"
+                          : "bg-slate-800 text-slate-600"
+                      }`}>
+                        {progressState.currentStepIndex > 3 ? "✓" : "3"}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h4 className="text-xs font-bold text-white">3. AI Speech-to-Text Recognition</h4>
+                          {progressState.currentStepIndex === 3 && (
+                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse font-mono font-bold">
+                              ACTIVE
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-400">
+                          {progressState.currentStepIndex === 3
+                            ? progressState.stepDetail
+                            : progressState.currentStepIndex > 3
+                            ? "Acoustic tokens transcribed with timestamps"
+                            : "Queued in AI acoustic model pipeline"}
+                        </p>
+                      </div>
+                    </div>
+                    {progressState.currentStepIndex === 3 && (
+                      <span className="text-xs font-mono font-bold text-amber-400">
+                        ⏱️ {progressState.elapsedSec.toFixed(1)}s
+                      </span>
+                    )}
+                    {progressState.currentStepIndex > 3 && (
+                      <span className="text-xs font-semibold text-emerald-400">Done ✓</span>
+                    )}
+                  </div>
+
+                  {/* Step 4: Subtitle Timing & Word Limits */}
+                  <div className={`p-2.5 sm:p-3 rounded-xl border flex items-center justify-between transition-all ${
+                    progressState.currentStepIndex === 4
+                      ? "bg-amber-500/15 border-amber-500/50 text-amber-200"
+                      : progressState.currentStepIndex > 4
+                      ? "bg-slate-900/60 border-emerald-500/30 text-slate-300"
+                      : "bg-slate-900/30 border-slate-800/60 text-slate-500"
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                        progressState.currentStepIndex > 4
+                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                          : progressState.currentStepIndex === 4
+                          ? "bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse"
+                          : "bg-slate-800 text-slate-600"
+                      }`}>
+                        {progressState.currentStepIndex > 4 ? "✓" : "4"}
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-white">4. Subtitle Timing & Word Limits</h4>
+                        <p className="text-[11px] text-slate-400">
+                          {progressState.currentStepIndex >= 4
+                            ? `Formatting cues to ${minWordsPerLine}-${maxWordsPerLine} words per line`
+                            : "Waiting for speech tokens..."}
+                        </p>
+                      </div>
+                    </div>
+                    {progressState.currentStepIndex > 4 && (
+                      <span className="text-xs font-semibold text-emerald-400">Done ✓</span>
+                    )}
+                  </div>
+
+                  {/* Step 5: Smart Title & Vault Sync */}
+                  <div className={`p-2.5 sm:p-3 rounded-xl border flex items-center justify-between transition-all ${
+                    progressState.currentStepIndex === 5
+                      ? "bg-emerald-500/15 border-emerald-500/50 text-emerald-200"
+                      : "bg-slate-900/30 border-slate-800/60 text-slate-500"
+                  }`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center font-bold text-xs shrink-0 ${
+                        progressState.stage === "done"
+                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40"
+                          : progressState.currentStepIndex === 5
+                          ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 animate-pulse"
+                          : "bg-slate-800 text-slate-600"
+                      }`}>
+                        {progressState.stage === "done" ? "✓" : "5"}
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-white">5. Smart Title & Asset Vault Storage</h4>
+                        <p className="text-[11px] text-slate-400">
+                          {progressState.smartTitle
+                            ? `Saved as "${progressState.smartTitle}" in Left Sidebar Vault`
+                            : "Auto-saving audio & subtitles to Left Sidebar Vault"}
+                        </p>
+                      </div>
+                    </div>
+                    {progressState.stage === "done" && (
+                      <span className="text-xs font-semibold text-emerald-400">Done ✓</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. Bottom Sound Frequency Equalizer Animation */}
+                <div className="pt-3 border-t border-slate-800 flex flex-col items-center gap-1.5">
+                  <div className="flex items-center gap-1 h-5">
+                    {[...Array(28)].map((_, i) => (
+                      <span
+                        key={i}
+                        className="w-1 rounded-full bg-gradient-to-t from-amber-500 to-amber-300 transition-all duration-75"
+                        style={{
+                          height: `${Math.max(3, Math.sin(i * 0.45 + progressState.elapsedSec * 7) * 12 + 6)}px`,
+                          opacity: 0.85,
+                        }}
+                      />
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-mono">
+                    Audio stream active &bull; AI model decoding phonetics in real-time
+                  </p>
+                </div>
+              </div>
             ) : (
               /* Empty State */
               <div className="h-full flex flex-col items-center justify-center text-center text-slate-400 p-8">
