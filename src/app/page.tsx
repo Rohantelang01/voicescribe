@@ -1,69 +1,245 @@
-import Image from "next/image";
+"use client";
+
+import React, { useState, useEffect } from "react";
+import Header, { ActiveTab } from "@/components/Header";
+import ApiKeyModal from "@/components/ApiKeyModal";
+import PersonaModal from "@/components/PersonaModal";
+import AudioHistoryModal from "@/components/AudioHistoryModal";
+import LeftSidebarVault from "@/components/LeftSidebarVault";
+import StudioTab from "@/components/StudioTab";
+import AudioToSrtTab from "@/components/AudioToSrtTab";
+import AudioCleanerTab from "@/components/AudioCleanerTab";
+import AudioMergerTab from "@/components/AudioMergerTab";
+import SrtCleanerTab from "@/components/SrtCleanerTab";
+import { TTSPoolState, loadTTSPoolState } from "@/lib/tts-projects";
+import {
+  PersonaConfig,
+  loadPersonas,
+  DEFAULT_PERSONAS,
+  DEFAULT_PERSONA_ID,
+} from "@/lib/personas";
+import { PipelineVoiceoverPart, dataUrlToFile } from "@/lib/pipeline-store";
 
 export default function Home() {
+  const [activeTab, setActiveTab] = useState<ActiveTab>("studio");
+  const [isKeyModalOpen, setIsKeyModalOpen] = useState(false);
+  const [isPersonaModalOpen, setIsPersonaModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [poolState, setPoolState] = useState<TTSPoolState | null>(null);
+
+  // Dynamic Personas State
+  const [allPersonas, setAllPersonas] = useState<Record<string, PersonaConfig>>(DEFAULT_PERSONAS);
+  const [activePersonaId, setActivePersonaId] = useState<string>(DEFAULT_PERSONA_ID);
+
+  // Connected Studio Pipeline State
+  const [pipelineVoiceoverParts, setPipelineVoiceoverParts] = useState<PipelineVoiceoverPart[]>([]);
+  const [pipelineAudioFile, setPipelineAudioFile] = useState<File | null>(null);
+  const [pipelineAudioSource, setPipelineAudioSource] = useState<string | null>(null);
+  const [pipelineSrt, setPipelineSrt] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadedPool = loadTTSPoolState();
+    setPoolState(loadedPool);
+
+    const loadedPersonas = loadPersonas();
+    setAllPersonas(loadedPersonas);
+    if (!loadedPersonas[activePersonaId]) {
+      setActivePersonaId(Object.keys(loadedPersonas)[0] || DEFAULT_PERSONA_ID);
+    }
+  }, []);
+
+  if (!poolState) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center text-slate-500 text-sm">
+        Initializing Audio Studio...
+      </div>
+    );
+  }
+
+  const activePersona = allPersonas[activePersonaId] || DEFAULT_PERSONAS[DEFAULT_PERSONA_ID];
+  const activeProject =
+    poolState.projects.find((p) => p.id === poolState.activeProjectId) || poolState.projects[0];
+
+  const handlePersonasChange = (
+    updatedPersonas: Record<string, PersonaConfig>,
+    newActiveId: string
+  ) => {
+    setAllPersonas(updatedPersonas);
+    setActivePersonaId(newActiveId);
+  };
+
+  // ─── Pipeline Handoff Handlers ────────────────────────────────
+  const handleSendPartsToMerger = (parts: PipelineVoiceoverPart[]) => {
+    setPipelineVoiceoverParts(parts);
+    setActiveTab("merger");
+  };
+
+  const handleSendAudioToCleaner = (audioDataUrlOrFile: string | File, filename?: string) => {
+    if (typeof audioDataUrlOrFile === "string") {
+      const file = dataUrlToFile(audioDataUrlOrFile, filename || "studio_voiceover.wav");
+      setPipelineAudioFile(file);
+    } else {
+      setPipelineAudioFile(audioDataUrlOrFile);
+    }
+    setPipelineAudioSource("Studio / Merger");
+    setActiveTab("cleaner");
+  };
+
+  const handleSendAudioToTranscribe = (audioDataUrlOrFile: string | File, filename?: string) => {
+    if (typeof audioDataUrlOrFile === "string") {
+      const file = dataUrlToFile(audioDataUrlOrFile, filename || "cleaned_audio.mp3");
+      setPipelineAudioFile(file);
+    } else {
+      setPipelineAudioFile(audioDataUrlOrFile);
+    }
+    setPipelineAudioSource("Audio Cleaner");
+    setActiveTab("transcribe");
+  };
+
+  const handleSendSrtToCleaner = (srtContent: string) => {
+    setPipelineSrt(srtContent);
+    setActiveTab("srt-cleaner");
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans selection:bg-amber-500/20 selection:text-amber-900">
+      {/* Header with Quick Dropdowns */}
+      <Header
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        onOpenKeys={() => setIsKeyModalOpen(true)}
+        poolState={poolState}
+        onUpdatePoolState={setPoolState}
+        activePersona={activePersona}
+        allPersonas={allPersonas}
+        onSelectPersona={setActivePersonaId}
+        onOpenPersonaModal={() => setIsPersonaModalOpen(true)}
+        onOpenHistory={() => setIsHistoryModalOpen(true)}
+      />
+
+      {/* Studio Workspace with Persistent Left Sidebar Asset Vault */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Persistent Left Sidebar Asset Vault (Max 20 Audios & Max 20 SRTs) */}
+        <LeftSidebarVault
+          currentActiveTab={activeTab}
+          onLoadAudioToTab={(item, targetTab) => {
+            if (targetTab === "cleaner") {
+              handleSendAudioToCleaner(item.dataUrl, `${item.name}.mp3`);
+            } else if (targetTab === "transcribe") {
+              handleSendAudioToTranscribe(item.dataUrl, `${item.name}.mp3`);
+            } else if (targetTab === "merger") {
+              setActiveTab("merger");
+            }
+          }}
+          onLoadSrtToTab={(item, targetTab) => {
+            if (targetTab === "transcribe") {
+              setPipelineSrt(item.srtContent);
+              setActiveTab("transcribe");
+            } else if (targetTab === "srt-cleaner") {
+              setPipelineSrt(item.srtContent);
+              setActiveTab("srt-cleaner");
+            }
+          }}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+
+        {/* Main Content Container */}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 overflow-y-auto">
+          {activeTab === "studio" && (
+            <StudioTab
+              poolState={poolState}
+              onUpdatePoolState={setPoolState}
+              onOpenKeys={() => setIsKeyModalOpen(true)}
+              persona={activePersona}
+              allPersonas={allPersonas}
+              onSelectPersona={setActivePersonaId}
+              onOpenPersonaModal={() => setIsPersonaModalOpen(true)}
+              onSendToMerger={handleSendPartsToMerger}
+              onSendToCleaner={handleSendAudioToCleaner}
+              onSendToTranscribe={handleSendAudioToTranscribe}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+          )}
+
+          {activeTab === "merger" && (
+            <AudioMergerTab
+              initialVoiceoverParts={pipelineVoiceoverParts}
+              onSendToCleaner={handleSendAudioToCleaner}
+              onSendToTranscribe={handleSendAudioToTranscribe}
+            />
+          )}
+
+          {activeTab === "cleaner" && (
+            <AudioCleanerTab
+              initialFile={pipelineAudioFile}
+              initialSourceLabel={pipelineAudioSource}
+              onSendToTranscribe={handleSendAudioToTranscribe}
+              onOpenHistory={() => setIsHistoryModalOpen(true)}
+            />
+          )}
+
+          {activeTab === "transcribe" && (
+            <AudioToSrtTab
+              poolState={poolState}
+              onOpenKeys={() => setIsKeyModalOpen(true)}
+              initialFile={pipelineAudioFile}
+              initialSourceLabel={pipelineAudioSource}
+              initialSrt={pipelineSrt}
+              onSendToSrtCleaner={handleSendSrtToCleaner}
+            />
+          )}
+
+          {activeTab === "srt-cleaner" && (
+            <SrtCleanerTab initialSrt={pipelineSrt} />
+          )}
+        </main>
+      </div>
+
+      {/* Footer / System Status */}
+      <footer className="border-t border-slate-200 bg-white/90 py-4 text-xs text-slate-500">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            <span>Local FFmpeg Signal Engine Active</span>
+            <span>&bull;</span>
+            <span>
+              Voice Character:{" "}
+              <strong className="text-slate-800 font-semibold">{activePersona.name}</strong> ({activePersona.baseVoice})
+            </span>
+          </div>
+          <div className="flex items-center gap-4 text-[11px] text-slate-500">
+            <span>
+              Active Project: <strong className="text-slate-700">{activeProject?.name}</strong>
+            </span>
+            <span>
+              TTS Model: <span className="font-mono text-slate-700">{poolState.selectedModel}</span>
+            </span>
+          </div>
         </div>
-      </main>
+      </footer>
+
+      {/* Modal 1: API Keys Configuration Modal */}
+      <ApiKeyModal
+        isOpen={isKeyModalOpen}
+        onClose={() => setIsKeyModalOpen(false)}
+        poolState={poolState}
+        onSaveState={setPoolState}
+      />
+
+      {/* Modal 2: Custom Persona Builder Modal */}
+      <PersonaModal
+        isOpen={isPersonaModalOpen}
+        onClose={() => setIsPersonaModalOpen(false)}
+        currentPersona={activePersona}
+        allPersonas={allPersonas}
+        onPersonasChange={handlePersonasChange}
+      />
+
+      {/* Modal 3: Local Audio Stack History Modal (Max 20 FIFO) */}
+      <AudioHistoryModal
+        isOpen={isHistoryModalOpen}
+        onClose={() => setIsHistoryModalOpen(false)}
+        onSelectForCleaner={handleSendAudioToCleaner}
+        onSelectForTranscribe={handleSendAudioToTranscribe}
+      />
     </div>
   );
 }
