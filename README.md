@@ -66,10 +66,10 @@ choco install ffmpeg
 ### Install & Run
 
 ```bash
-git clone https://github.com/<your-username>/voicescribe.git
+git clone https://github.com/Rohantelang01/voicescribe.git
 cd voicescribe
-pnpm install
-pnpm dev
+npm install
+npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser. Or use the launcher:

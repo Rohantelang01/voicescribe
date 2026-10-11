@@ -62,12 +62,12 @@ Please help me set up the VoiceScribe project on my machine:
 2. Report & Confirm: Show me a clear summary table of what is already installed vs. what is missing. Tell me what needs to be installed, and ask for my confirmation ("Would you like to proceed with the setup?") before running any install commands.
 3. Installation (on my approval): Once I confirm ("yes", "proceed", "let's do it", etc.):
    - Install any missing system tools using the proper package manager (winget on Windows, Homebrew on macOS, or apt/dnf/pacman on Linux).
-   - Clone the repository: https://github.com/<your-username>/voicescribe.git
+   - Clone the repository: https://github.com/Rohantelang01/voicescribe.git
    - Navigate into the 'voicescribe' folder and run 'npm install'.
 4. Completion & Next Steps: Once everything is successfully installed, notify me with a message that installation is complete, and provide the exact command to start the development server ('npm run dev' or './start.sh') so I can test it at http://localhost:3000.
 ```
 
-*(Replace `<your-username>` with your GitHub username or your repository URL).*
+*(If you forked the repository, replace the URL with your fork).*
 
 ### How the Agent Workflow Works:
 
@@ -180,7 +180,7 @@ node --version && npm --version && ffmpeg -version
 Clone the repository using Git:
 
 ```bash
-git clone https://github.com/<your-username>/voicescribe.git
+git clone https://github.com/Rohantelang01/voicescribe.git
 cd voicescribe
 ```
 
