@@ -30,8 +30,10 @@ import {
 } from "lucide-react";
 import { TTSPoolState, getRemainingRequests } from "@/lib/tts-projects";
 import { parseSrtCues, cuesToSrt, formatSrtTime, SrtCue } from "@/lib/srt-chunker";
+import { splitAudioToChunks, ChunkDecodeError } from "@/lib/audio-chunker";
 import { saveAudioToQueue, saveSrtToQueue } from "@/lib/audio-storage";
 import { generateSmartTitle } from "@/lib/title-generator";
+import { numberedTitle, useFeatureTitles } from "@/lib/feature-titles";
 
 export interface UploadProgressState {
   stage: "idle" | "uploading" | "processing" | "transcribing" | "formatting" | "finalizing" | "done" | "error";
@@ -44,58 +46,92 @@ export interface UploadProgressState {
   smartTitle?: string;
 }
 
-export type ScriptStyleType = "devanagari" | "roman" | "english" | "auto";
+export type ScriptStyleType = "auto" | "manual";
 
-interface ScriptStyleOption {
+interface ScriptModeOption {
   id: ScriptStyleType;
   label: string;
   badge: string;
   desc: string;
-  prompt: string;
-  lang: string;
   icon: string;
 }
 
-const SCRIPT_STYLE_OPTIONS: ScriptStyleOption[] = [
-  {
-    id: "devanagari",
-    label: "शुद्ध हिंदी (Devanagari)",
-    badge: "Pure Hindi",
-    desc: "100% शुद्ध हिंदी (नमस्ते दोस्तों...). कोई इंग्लिश मिक्सिंग नहीं।",
-    prompt:
-      "नमस्ते, यह एक हिंदी ऑडियो रिकॉर्डिंग है। इसमें स्पष्ट और शुद्ध हिंदी भाषा में बातचीत हो रही है। कृपया सभी शब्दों को केवल शुद्ध देवनागरी लिपि में ही लिखें।",
-    lang: "hi",
-    icon: "🇮🇳",
-  },
-  {
-    id: "roman",
-    label: "रोमन हिंग्लिश (Roman)",
-    badge: "Reels / Shorts",
-    desc: "बोलचाल की हिंग्लिश (Namaste doston...). वायरल कैप्शन स्टाइल।",
-    prompt:
-      "नमस्ते, यह एक हिंदी ऑडियो रिकॉर्डिंग है। इसमें स्पष्ट और शुद्ध हिंदी भाषा में बातचीत हो रही है।",
-    lang: "hi",
-    icon: "💬",
-  },
-  {
-    id: "english",
-    label: "इंग्लिश ट्रांसलेशन (English)",
-    badge: "Translate",
-    desc: "हिंदी भाषण का अंग्रेजी सबटाइटल्स में अनुवाद (Hello friends...).",
-    prompt: "Educational speech audio translated into clear, fluent English subtitles.",
-    lang: "en",
-    icon: "🇺🇸",
-  },
+const SCRIPT_MODE_OPTIONS: ScriptModeOption[] = [
   {
     id: "auto",
-    label: "जैसा बोला वैसा (Verbatim)",
-    badge: "Code-Switch",
-    desc: "हिंदी शब्द देवनागरी में और तकनीकी शब्द अंग्रेजी लेटर्स में।",
-    prompt: "नमस्ते, इस ऑडियो में हिंदी और तकनीकी अंग्रेजी शब्दों का स्वाभाविक प्रयोग है।",
-    lang: "hi",
+    label: "Auto Detect",
+    badge: "Recommended",
+    desc: "Auto-detects the spoken language and transcribes exactly as spoken.",
+    icon: "✨",
+  },
+  {
+    id: "manual",
+    label: "Manual Select",
+    badge: "All Languages",
+    desc: "Choose the language manually. The engine transcribes in that language.",
     icon: "🌐",
   },
 ];
+
+// Whisper-supported languages (subset of 99+ — most used first)
+const MANUAL_LANGUAGES = [
+  { code: "hi", label: "Hindi — हिंदी" },
+  { code: "en", label: "English" },
+  { code: "hinglish", label: "Hinglish (Roman) — Namaste doston" },
+  { code: "bn", label: "Bengali — বাংলা" },
+  { code: "mr", label: "Marathi — मराठी" },
+  { code: "te", label: "Telugu — తెలుగు" },
+  { code: "ta", label: "Tamil — தமிழ்" },
+  { code: "gu", label: "Gujarati — ગુજરાતી" },
+  { code: "kn", label: "Kannada — ಕನ್ನಡ" },
+  { code: "ml", label: "Malayalam — മലയാളം" },
+  { code: "pa", label: "Punjabi — ਪੰਜਾਬੀ" },
+  { code: "ur", label: "Urdu — اردو" },
+  { code: "es", label: "Spanish — Español" },
+  { code: "fr", label: "French — Français" },
+  { code: "de", label: "German — Deutsch" },
+  { code: "ar", label: "Arabic — العربية" },
+  { code: "pt", label: "Portuguese" },
+  { code: "ru", label: "Russian" },
+  { code: "ja", label: "Japanese" },
+  { code: "ko", label: "Korean" },
+  { code: "zh", label: "Chinese" },
+  { code: "ne", label: "Nepali — नेपाली" },
+  { code: "sa", label: "Sanskrit — संस्कृतम्" },
+  { code: "or", label: "Odia — ଓଡ଼ିଆ" },
+  { code: "as", label: "Assamese — অসমীয়া" },
+];
+
+type EngineId =
+  | "groq-whisper-turbo"
+  | "groq-whisper-v3"
+  | "gemini-3.5-transcribe"
+  | "gemini-3.1-flash-lite"
+  | "gemini-3.5-flash-lite"
+  | "gemini-2.5-flash-lite"
+  | "gemini-2.5-flash"
+  | "gemini-3.5-flash"
+  | "gemini-3-flash"
+  | "gemini-3.6-flash"
+  | "gemini-3.7-flash"
+  | "gemini-3.8-flash"
+  | "gemini-1.5-flash";
+
+const ENGINE_LABELS: Record<string, string> = {
+  "groq-whisper-turbo": "Groq Whisper Large v3 Turbo",
+  "groq-whisper-v3": "Groq Whisper Large v3",
+  "gemini-3.5-transcribe": "Google Gemini 3.5 Transcribe (Dedicated STT • Low Quota)",
+  "gemini-3.1-flash-lite": "Google Gemini 3.1 Flash Lite (High Quota • Recommended)",
+  "gemini-3.5-flash-lite": "Google Gemini 3.5 Flash Lite (High Quota)",
+  "gemini-2.5-flash-lite": "Google Gemini 2.5 Flash Lite",
+  "gemini-2.5-flash": "Google Gemini 2.5 Flash",
+  "gemini-3.5-flash": "Google Gemini 3.5 Flash",
+  "gemini-3-flash": "Google Gemini 3 Flash",
+  "gemini-3.6-flash": "Google Gemini 3.6 Flash",
+  "gemini-3.7-flash": "Google Gemini 3.7 Flash",
+  "gemini-3.8-flash": "Google Gemini 3.8 Flash",
+  "gemini-1.5-flash": "Google Gemini 1.5 Flash (Legacy → 2.5 Lite)",
+};
 
 interface AudioToSrtTabProps {
   poolState: TTSPoolState;
@@ -103,7 +139,9 @@ interface AudioToSrtTabProps {
   initialFile?: File | null;
   initialSourceLabel?: string | null;
   initialSrt?: string | null;
-  onSendToSrtCleaner?: (srtContent: string) => void;
+  initialScript?: string | null;
+  onSendToSrtCleaner?: (srtContent: string, audioFile?: File | null, audioLabel?: string | null, scriptText?: string | null) => void;
+  onManualFileSelect?: () => void;
 }
 
 function formatClock(seconds: number): string {
@@ -120,22 +158,20 @@ export default function AudioToSrtTab({
   initialFile,
   initialSourceLabel,
   initialSrt,
+  initialScript,
   onSendToSrtCleaner,
+  onManualFileSelect,
 }: AudioToSrtTabProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(initialFile || null);
-  const [engine, setEngine] = useState<
-    "groq-whisper-turbo" | "groq-whisper-v3" | "gemini-2.5-flash" | "gemini-1.5-flash"
-  >("groq-whisper-turbo");
+  const [engine, setEngine] = useState<EngineId>("groq-whisper-turbo");
   const [selectedProjectId, setSelectedProjectId] = useState(poolState.activeProjectId);
-  const [scriptStyle, setScriptStyle] = useState<ScriptStyleType>("devanagari");
+  const [scriptStyle, setScriptStyle] = useState<ScriptStyleType>("auto");
   const [language, setLanguage] = useState("hi");
   const [maxWordsPerLine, setMaxWordsPerLine] = useState(8);
   const [minWordsPerLine, setMinWordsPerLine] = useState(5);
   const [ignoreDuration, setIgnoreDuration] = useState(true);
   const [showAdvancedPrompt, setShowAdvancedPrompt] = useState(false);
-  const [customPrompt, setCustomPrompt] = useState(
-    "नमस्ते, यह एक हिंदी ऑडियो रिकॉर्डिंग है। इसमें स्पष्ट और शुद्ध हिंदी भाषा में बातचीत हो रही है। कृपया सभी शब्दों को केवल शुद्ध देवनागरी लिपि में ही लिखें।"
-  );
+  const [customPrompt, setCustomPrompt] = useState("");
 
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressState, setProgressState] = useState<UploadProgressState>({
@@ -152,6 +188,30 @@ export default function AudioToSrtTab({
   const [srtResult, setSrtResult] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [timingMeta, setTimingMeta] = useState<{
+    coveragePct: number;
+    largestGapSec: number;
+    largestGapAt: number;
+    retried: boolean;
+    estimated: boolean;
+  } | null>(null);
+  // Server-confirmed exact upload size (browser -> /api/transcribe -> Groq/Gemini).
+  // Groq response me bytes wapas nahi aata, isliye backend audioBuffer.length report karta hai.
+  const [uploadMeta, setUploadMeta] = useState<{
+    bytes: number;
+    mb: number;
+    display: string;
+    fileName?: string;
+  } | null>(null);
+  const [scriptFixState, setScriptFixState] = useState<{
+    needed: boolean;
+    fixed: boolean;
+    changed: number;
+  } | null>(null);
+  const [fixingUrdu, setFixingUrdu] = useState(false);
+  const [showSyncFix, setShowSyncFix] = useState(false);
+  const [useChunking, setUseChunking] = useState(false);
+  const ft = useFeatureTitles();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // ─── Synchronized Live Preview State ───
@@ -184,6 +244,11 @@ export default function AudioToSrtTab({
     }
   }, [selectedFile]);
 
+  // Lambi audio (>2.5 min) par chunking auto-ON — beech ka miss rokta hai
+  useEffect(() => {
+    if (duration > 150) setUseChunking(true);
+  }, [duration]);
+
   useEffect(() => {
     if (initialFile) {
       setSelectedFile(initialFile);
@@ -192,11 +257,23 @@ export default function AudioToSrtTab({
   }, [initialFile]);
 
   useEffect(() => {
-    if (initialSrt) {
+    // Echo-guard: jo SRT already display par hai use dobara mat thopo.
+    // (Send-to-cleaner pipelineSrt wapas aata hai — bina guard ke fresh result
+    // stale shared value se clobber ho jata.)
+    if (initialSrt && initialSrt !== srtResult) {
       setSrtResult(initialSrt);
       setViewMode("sync-preview");
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialSrt]);
+
+  // Linked ground-truth script (Studio se aayi ho to) — cleaner ko forward hogi.
+  const [contextScript, setContextScript] = useState<string | null>(initialScript || null);
+  useEffect(() => {
+    const incoming = initialScript || null;
+    if (incoming !== contextScript) setContextScript(incoming);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialScript]);
 
   // Clean up timer on unmount
   useEffect(() => {
@@ -238,7 +315,215 @@ export default function AudioToSrtTab({
     if (e.target.files && e.target.files[0]) {
       setSelectedFile(e.target.files[0]);
       setError(null);
+      setUploadMeta(null);
+      // Bahar se file aayi = studio script ab stale hai
+      onManualFileSelect?.();
       setProgressState({ stage: "idle", percent: 0, loadedMB: 0, totalMB: 0, elapsedSec: 0, currentStepIndex: 0, stepDetail: "" });
+    }
+  };
+
+  // Step 4+5 (shared): formatting → smart title → vault save → done.
+  // Shared by single-pass (XHR) and chunked (fetch).
+  const finalizeTranscription = async (
+    srtText: string,
+    timing: {
+      coveragePct: number;
+      largestGapSec: number;
+      largestGapAt: number;
+      retried: boolean;
+      estimated: boolean;
+    } | null
+  ) => {
+    // Stop every elapsed timer here — otherwise "Done (Ns)" keeps counting forever.
+    if (timerRef.current) clearInterval(timerRef.current);
+    setSrtResult(srtText);
+    if (timing) setTimingMeta(timing);
+
+    const isHinglishFx = scriptStyle === "manual" && language === "hinglish";
+    const effectiveScriptFx = isHinglishFx ? "roman" : scriptStyle === "auto" ? "auto" : "manual";
+
+    // Step 4: Formatting
+    setProgressState((prev) => ({
+      ...prev,
+      stage: "formatting",
+      currentStepIndex: 4,
+      stepDetail: "Formatting subtitle cues & applying word limits...",
+    }));
+
+    // Smart title from spoken text only (never cue numbers/timestamps).
+    const parsedCues = parseSrtCues(srtText);
+    const spokenText = parsedCues.map((c) => c.text).join(" ");
+    const smartTitle = generateSmartTitle(spokenText, "Audio Subtitles");
+
+    // Step 5: Vault Save
+    setProgressState((prev) => ({
+      ...prev,
+      stage: "finalizing",
+      currentStepIndex: 5,
+      stepDetail: `Saving "${smartTitle}" to Asset Vault...`,
+      smartTitle,
+    }));
+
+    // Save to Asset Vault (IndexedDB 20 SRTs FIFO)
+    try {
+      await saveSrtToQueue({
+        name: smartTitle,
+        sourceTab: "audio-to-srt",
+        cuesCount: parsedCues.length,
+        srtContent: srtText,
+        scriptStyle: effectiveScriptFx,
+        filename: `${smartTitle.toLowerCase().replace(/\s+/g, "-")}.srt`,
+      });
+
+      // Also persist audio in Asset Vault — File -> base64 dataUrl
+      // (blob: URL save karne par reload ke baad toot jata hai, isliye dataUrl)
+      try {
+        const dataUrl: string = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(selectedFile as File);
+        });
+        const ext = (selectedFile as File).name.split(".").pop()?.toLowerCase() || "mp3";
+        await saveAudioToQueue({
+          name: smartTitle,
+          sourceTab: "transcribe",
+          durationSeconds: duration,
+          sizeBytes: (selectedFile as File).size,
+          dataUrl,
+          format: ext,
+        });
+      } catch (audioSaveErr) {
+        console.warn("Audio vault save skipped:", audioSaveErr);
+      }
+    } catch (storageErr) {
+      console.warn("Failed to persist SRT to Asset Vault:", storageErr);
+    }
+
+    setProgressState((prev) => ({
+      ...prev,
+      stage: "done",
+      percent: 100,
+      currentStepIndex: 5,
+      stepDetail: "All steps complete! Live Sync Preview active.",
+      smartTitle,
+    }));
+    setViewMode("sync-preview");
+  };
+
+  // Long audio: transcribe in 60s WAV chunks, then merge with offsets.
+  // Small chunks stop Whisper from dropping middle sections.
+  const transcribeChunked = async (
+    file: File,
+    baseParams: { engine: EngineId; effectiveScript: string; effectiveLang: string }
+  ) => {
+    const totalMB = parseFloat((file.size / 1024 / 1024).toFixed(1));
+    setProgressState({
+      stage: "uploading",
+      percent: 2,
+      loadedMB: 0,
+      totalMB,
+      elapsedSec: 0,
+      currentStepIndex: 1,
+      stepDetail: "Splitting long audio into 60s chunks in the browser...",
+    });
+
+    const { chunks, totalDuration } = await splitAudioToChunks(file, 60);
+
+    if (timerRef.current) clearInterval(timerRef.current);
+    const startTime = Date.now();
+    timerRef.current = setInterval(() => {
+      setProgressState((prev) => ({
+        ...prev,
+        elapsedSec: parseFloat(((Date.now() - startTime) / 1000).toFixed(1)),
+      }));
+    }, 200);
+
+    const merged: SrtCue[] = [];
+    let confirmedBytes = 0;
+    for (let i = 0; i < chunks.length; i++) {
+      const ch = chunks[i];
+      setProgressState((prev) => ({
+        ...prev,
+        stage: "transcribing",
+        percent: Math.round((i / chunks.length) * 100),
+        loadedMB: totalMB,
+        currentStepIndex: 3,
+        stepDetail: `Transcribing chunk ${i + 1}/${chunks.length} (${Math.round(ch.durationSec)}s slice, offset +${Math.round(ch.offsetSec)}s)...`,
+      }));
+
+      const fd = new FormData();
+      fd.append("audio", new File([ch.blob], ch.fileName, { type: "audio/wav" }));
+      fd.append("engine", baseParams.engine);
+      fd.append("scriptStyle", baseParams.effectiveScript);
+      fd.append("groqApiKey", poolState.groqApiKey || "");
+      fd.append("geminiApiKey", activeProject?.apiKey || "");
+      fd.append("language", baseParams.effectiveLang);
+      fd.append("maxWordsPerLine", maxWordsPerLine.toString());
+      fd.append("minWordsPerLine", minWordsPerLine.toString());
+      fd.append("ignoreDuration", ignoreDuration.toString());
+      fd.append("prompt", customPrompt);
+      fd.append("durationSeconds", ch.durationSec.toString());
+
+      const res = await fetch("/api/transcribe", { method: "POST", body: fd });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        throw new Error(data.error || `Chunk ${i + 1}/${chunks.length} failed (${res.status})`);
+      }
+      // Server-confirmed exact bytes for this chunk (fallback: local blob size)
+      confirmedBytes +=
+        typeof data?.upload?.bytes === "number" ? data.upload.bytes : ch.blob.size;
+      if (!data.srtContent || !String(data.srtContent).includes("-->")) {
+        throw new Error(`No speech found in chunk ${i + 1} — please retry`);
+      }
+      for (const c of parseSrtCues(String(data.srtContent))) {
+        merged.push({ ...c, start: c.start + ch.offsetSec, end: c.end + ch.offsetSec });
+      }
+    }
+
+    merged.sort((a, b) => a.start - b.start);
+    const mergedSrt = cuesToSrt(merged);
+
+    // Chunked path: server-confirmed total bytes (sum of per-chunk upload.bytes)
+    const chunkedMB = Math.round((confirmedBytes / 1024 / 1024) * 100) / 100;
+    setUploadMeta({
+      bytes: confirmedBytes,
+      mb: chunkedMB,
+      display: chunkedMB >= 1 ? `${chunkedMB} MB` : `${Math.round(confirmedBytes / 1024)} KB`,
+      fileName: file.name,
+    });
+
+    // Client-side coverage (merge ke baad)
+    let covered = 0;
+    let curEnd = -1;
+    let lg = 0;
+    let lgAt = 0;
+    for (const c of merged) {
+      if (curEnd >= 0 && c.start > curEnd) {
+        const gap = c.start - curEnd;
+        if (gap > lg) {
+          lg = gap;
+          lgAt = curEnd;
+        }
+      }
+      if (c.end > curEnd) {
+        covered += c.end - Math.max(c.start, curEnd < 0 ? c.start : curEnd);
+        curEnd = c.end;
+      }
+    }
+    await finalizeTranscription(mergedSrt, {
+      coveragePct: Math.round(Math.min(1, covered / Math.max(1, totalDuration)) * 100),
+      largestGapSec: Math.round(lg * 10) / 10,
+      largestGapAt: Math.round(lgAt * 10) / 10,
+      retried: false,
+      estimated: baseParams.engine.startsWith("gemini"),
+    });
+    // Urdu mis-detection can also occur in the first chunk — show the banner.
+    if (
+      /[\u0600-\u06FF]/.test(mergedSrt) &&
+      (baseParams.effectiveLang === "auto" || baseParams.effectiveLang === "hi")
+    ) {
+      setScriptFixState({ needed: true, fixed: false, changed: 0 });
     }
   };
 
@@ -262,6 +547,9 @@ export default function AudioToSrtTab({
 
     setIsProcessing(true);
     setError(null);
+    setTimingMeta(null);
+    setUploadMeta(null);
+    setScriptFixState(null);
 
     const totalFileSizeMB = parseFloat((selectedFile.size / 1024 / 1024).toFixed(1));
     setProgressState({
@@ -275,20 +563,52 @@ export default function AudioToSrtTab({
     });
 
     try {
+      // Resolve effective script + language for backend (backward compatible)
+      const isHinglish = scriptStyle === "manual" && language === "hinglish";
+      const effectiveScript = isHinglish ? "roman" : scriptStyle === "auto" ? "auto" : "manual";
+      const effectiveLang =
+        scriptStyle === "auto" ? "auto" : isHinglish ? "hi" : language;
+
+      // Long audio uses the chunked path (60s WAV chunks). Above 2.5 min or 8MB,
+      // or when the user enabled the toggle. Decode failure falls back to single-pass.
+      const doChunk = useChunking || selectedFile.size > 8 * 1024 * 1024;
+      if (doChunk) {
+        try {
+          await transcribeChunked(selectedFile, { engine, effectiveScript, effectiveLang });
+          setIsProcessing(false);
+          return;
+        } catch (chunkErr) {
+          if (timerRef.current) clearInterval(timerRef.current);
+          if (chunkErr instanceof ChunkDecodeError) {
+            console.warn("Chunking unavailable, single-pass fallback:", chunkErr.message);
+          } else {
+            setError(chunkErr instanceof Error ? chunkErr.message : "Chunked transcription failed");
+            setProgressState((prev) => ({ ...prev, stage: "error", stepDetail: "Transcription error occurred" }));
+            setIsProcessing(false);
+            return;
+          }
+        }
+      }
+
       const formData = new FormData();
       formData.append("audio", selectedFile);
       formData.append("engine", engine);
-      formData.append("scriptStyle", scriptStyle);
+      formData.append("scriptStyle", effectiveScript);
       formData.append("groqApiKey", poolState.groqApiKey || "");
       formData.append("geminiApiKey", activeProject?.apiKey || "");
-      formData.append("language", language);
+      formData.append("language", effectiveLang);
       formData.append("maxWordsPerLine", maxWordsPerLine.toString());
       formData.append("minWordsPerLine", minWordsPerLine.toString());
       formData.append("ignoreDuration", ignoreDuration.toString());
       formData.append("prompt", customPrompt);
+      if (duration > 0 && isFinite(duration)) {
+        formData.append("durationSeconds", duration.toString());
+      }
 
       const xhr = new XMLHttpRequest();
       let startTime = Date.now();
+      const sendStart = performance.now(); // REAL measured upload time (no estimated %)
+      let progressEvents = 0;
 
       setProgressState({
         stage: "uploading",
@@ -297,11 +617,12 @@ export default function AudioToSrtTab({
         totalMB: totalFileSizeMB,
         elapsedSec: 0,
         currentStepIndex: 1,
-        stepDetail: `Uploading audio (${totalFileSizeMB} MB) to server...`,
+        stepDetail: `Sending to server (${totalFileSizeMB} MB)...`,
       });
 
-      // Track live upload progress
+      // Show only REAL browser progress events — no animations or estimates
       xhr.upload.onprogress = (e) => {
+        progressEvents++;
         if (e.lengthComputable) {
           const percent = Math.min(99, Math.round((e.loaded / e.total) * 100));
           const loadedMB = parseFloat((e.loaded / 1024 / 1024).toFixed(1));
@@ -319,22 +640,27 @@ export default function AudioToSrtTab({
 
       // When upload finishes and server starts processing
       xhr.upload.onload = () => {
+        const uploadSecs = (performance.now() - sendStart) / 1000;
         setProgressState((prev) => ({
           ...prev,
           stage: "transcribing",
           percent: 100,
           loadedMB: totalFileSizeMB,
           currentStepIndex: 3,
-          stepDetail: "Audio uploaded (100%)! AI model acoustic decoding in progress...",
+          stepDetail:
+            `Delivered to server (${totalFileSizeMB} MB in ${uploadSecs.toFixed(1)}s, measured)` +
+            (uploadSecs < 0.5
+              ? " — same machine, so instant (measured, not estimated). AI is working now..."
+              : " — AI is transcribing now..."),
         }));
 
         startTime = Date.now();
         if (timerRef.current) clearInterval(timerRef.current);
         timerRef.current = setInterval(() => {
           const sec = parseFloat(((Date.now() - startTime) / 1000).toFixed(1));
-          let detail = "AI Speech Model transcribing acoustic tokens...";
+          let detail = "AI speech model transcribing audio...";
           if (sec > 4 && sec <= 12) {
-            detail = "Recognizing Hindi speech phonetics & words...";
+            detail = "Recognizing speech sounds and words...";
           } else if (sec > 12 && sec <= 24) {
             detail = "Aligning word-level timestamps (start & end offsets)...";
           } else if (sec > 24) {
@@ -355,64 +681,20 @@ export default function AudioToSrtTab({
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             const data = JSON.parse(xhr.responseText);
-            setSrtResult(data.srtContent);
-
-            // Step 4: Formatting
-            setProgressState((prev) => ({
-              ...prev,
-              stage: "formatting",
-              currentStepIndex: 4,
-              stepDetail: "Formatting subtitle cues & applying word limits...",
-            }));
-
-            // Smart Unique Title Generation from Transcript
-            const smartTitle = generateSmartTitle(data.srtContent, "Hindi Audio Subtitles");
-            const parsedCues = parseSrtCues(data.srtContent);
-
-            // Step 5: Vault Save
-            setProgressState((prev) => ({
-              ...prev,
-              stage: "finalizing",
-              currentStepIndex: 5,
-              stepDetail: `Saving "${smartTitle}" to Asset Vault...`,
-              smartTitle,
-            }));
-
-            // Save to Asset Vault (IndexedDB 20 SRTs FIFO)
-            try {
-              await saveSrtToQueue({
-                name: smartTitle,
-                sourceTab: "audio-to-srt",
-                cuesCount: parsedCues.length,
-                srtContent: data.srtContent,
-                scriptStyle,
-                filename: `${smartTitle.toLowerCase().replace(/\s+/g, "-")}.srt`,
+            // Server-confirmed exact upload size (fallback: local file size)
+            if (data?.upload && typeof data.upload.bytes === "number") {
+              setUploadMeta(data.upload);
+            } else if (selectedFile) {
+              const mb = Math.round((selectedFile.size / 1024 / 1024) * 100) / 100;
+              setUploadMeta({
+                bytes: selectedFile.size,
+                mb,
+                display: mb >= 1 ? `${mb} MB` : `${Math.round(selectedFile.size / 1024)} KB`,
+                fileName: selectedFile.name,
               });
-
-              // Also persist audio in Asset Vault
-              if (audioUrl) {
-                await saveAudioToQueue({
-                  name: smartTitle,
-                  sourceTab: "transcribe",
-                  durationSeconds: duration,
-                  sizeBytes: selectedFile.size,
-                  dataUrl: audioUrl,
-                  format: "mp3",
-                });
-              }
-            } catch (storageErr) {
-              console.warn("Failed to persist SRT to Asset Vault:", storageErr);
             }
-
-            setProgressState((prev) => ({
-              ...prev,
-              stage: "done",
-              percent: 100,
-              currentStepIndex: 5,
-              stepDetail: "All steps complete! Live Sync Preview active.",
-              smartTitle,
-            }));
-            setViewMode("sync-preview");
+            await finalizeTranscription(data.srtContent, data.timing || null);
+            if (data.scriptFix) setScriptFixState(data.scriptFix);
           } catch (parseErr: any) {
             setError("Failed to parse transcription response");
             setProgressState((prev) => ({ ...prev, stage: "error", stepDetail: "Failed to parse response" }));
@@ -489,6 +771,79 @@ export default function AudioToSrtTab({
     setSrtResult(newSrt);
   };
 
+  // If the backend could not auto-fix: Urdu lines to Devanagari (one click).
+  const fixUrduScript = async () => {
+    if (!srtResult || fixingUrdu) return;
+    const hasGroq = !!poolState.groqApiKey?.trim();
+    const hasGemini = !!activeProject?.apiKey?.trim();
+    if (!hasGroq && !hasGemini) {
+      setError("A Groq or Gemini API key is required for this fix. Add it in API Settings.");
+      onOpenKeys();
+      return;
+    }
+    setFixingUrdu(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/transform-srt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          srt: srtResult,
+          task: "custom",
+          customInstruction:
+            "Convert ONLY the lines written in Perso-Arabic/Urdu script into Hindi Devanagari script with the SAME meaning. Lines already in Devanagari or English must stay EXACTLY unchanged.",
+          script: "",
+          provider: hasGroq ? "groq" : "gemini",
+          model: hasGroq ? "openai/gpt-oss-20b" : "gemini-3.1-flash-lite",
+          groqApiKey: poolState.groqApiKey || "",
+          geminiApiKey: activeProject?.apiKey || "",
+          maxWordsPerLine,
+          minWordsPerLine,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "Urdu fix fail ho gaya");
+      setSrtResult(data.srtContent);
+      setScriptFixState({ needed: true, fixed: true, changed: data.transformedCount || 0 });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Urdu fix fail ho gaya");
+    }
+    setFixingUrdu(false);
+  };
+
+  // Sync Fix: constant offset vs progressive drift need different repairs.
+  const transformAllCues = (fn: (c: SrtCue) => SrtCue) => {
+    if (!cues.length) return;
+    setSrtResult(cuesToSrt(cues.map(fn)));
+  };
+  // Shift all cues together (for constant delay).
+  const shiftSync = (deltaSec: number) =>
+    transformAllCues((c) => ({
+      ...c,
+      start: Math.max(0, c.start + deltaSec),
+      end: Math.max(0.2, c.end + deltaSec),
+    }));
+  // Stretch or shrink the whole timeline (for gradually growing drift).
+  const stretchSync = (factor: number) =>
+    transformAllCues((c) => ({ ...c, start: c.start * factor, end: c.end * factor }));
+  // Redistribute across the full duration by word count (instant fix for AI drift).
+  const retimeProportional = () => {
+    if (!cues.length) return;
+    const totalDur = duration > 0 ? duration : cues[cues.length - 1].end;
+    if (totalDur <= 0) return;
+    const totalWords =
+      cues.reduce((n, c) => n + c.text.split(/\s+/).filter(Boolean).length, 0) || 1;
+    let t = 0;
+    const out = cues.map((c) => {
+      const w = c.text.split(/\s+/).filter(Boolean).length || 1;
+      const nc = { ...c, start: t, end: t + (w / totalWords) * totalDur };
+      t = nc.end;
+      return nc;
+    });
+    out[out.length - 1].end = totalDur;
+    setSrtResult(cuesToSrt(out));
+  };
+
   const cuesCount = cues.length;
 
   return (
@@ -503,8 +858,7 @@ export default function AudioToSrtTab({
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Audio ko transcribe karein aur live preview me check karein ki har word aur timestamp audio se
-            exactly match ho raha hai ya nahi.
+            Transcribe audio and verify every word and timestamp against the audio in the live preview.
           </p>
         </div>
       </div>
@@ -564,7 +918,7 @@ export default function AudioToSrtTab({
               </div>
             ) : (
               <div>
-                <p className="text-xs font-semibold text-slate-700">Audio ya Video file upload karein</p>
+                <p className="text-xs font-semibold text-slate-700">Upload an audio or video file</p>
                 <p className="text-[11px] text-slate-400 mt-0.5">MP3, WAV, M4A, MP4 (Max 25MB)</p>
               </div>
             )}
@@ -580,40 +934,65 @@ export default function AudioToSrtTab({
                 className="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-300 text-slate-800 text-xs font-medium focus:outline-none focus:border-amber-500"
               >
                 <option value="groq-whisper-turbo">
-                  Groq Whisper Large v3 Turbo (Ultra Fast &bull; 2-5s &bull; Word Timestamps)
+                  Groq Whisper Large v3 Turbo (Ultra Fast • 2-5s • Word Timestamps)
                 </option>
                 <option value="groq-whisper-v3">
-                  Groq Whisper Large v3 (Maximum Accuracy &bull; Recommended for Hindi)
+                  Groq Whisper Large v3 (Maximum Accuracy • 99+ Languages)
                 </option>
-                <option value="gemini-2.5-flash">
-                  Google Gemini 2.5 Flash (Direct Multimodal Subtitles &bull; Zero Hallucination)
-                </option>
-                <option value="gemini-1.5-flash">
-                  Google Gemini 1.5 Flash (Fast Multimodal Subtitles)
-                </option>
+                <optgroup label="Gemini — Dedicated Transcribe (quota bahut kam)">
+                  <option value="gemini-3.5-transcribe">
+                    Gemini 3.5 Transcribe (Plain STT • ~1 RPM / 25 RPD)
+                  </option>
+                </optgroup>
+                <optgroup label="Gemini — Flash (high quota, seedha SRT)">
+                  <option value="gemini-3.1-flash-lite">
+                    Gemini 3.1 Flash Lite (15 RPM / 500 RPD • Recommended)
+                  </option>
+                  <option value="gemini-3.5-flash-lite">
+                    Gemini 3.5 Flash Lite (15 RPM / 500 RPD)
+                  </option>
+                  <option value="gemini-2.5-flash-lite">
+                    Gemini 2.5 Flash Lite (10 RPM / 20 RPD)
+                  </option>
+                  <option value="gemini-2.5-flash">
+                    Gemini 2.5 Flash (5 RPM / 20 RPD)
+                  </option>
+                  <option value="gemini-3.5-flash">
+                    Gemini 3.5 Flash (5 RPM / 20 RPD)
+                  </option>
+                  <option value="gemini-3-flash">
+                    Gemini 3 Flash (5 RPM / 20 RPD)
+                  </option>
+                  <option value="gemini-3.6-flash">
+                    Gemini 3.6 Flash (5 RPM / 20 RPD)
+                  </option>
+                  <option value="gemini-3.7-flash">
+                    Gemini 3.7 Flash (5 RPM / 20 RPD)
+                  </option>
+                  <option value="gemini-3.8-flash">
+                    Gemini 3.8 Flash (5 RPM / 20 RPD)
+                  </option>
+                </optgroup>
               </select>
+              <p className="text-[10px] text-slate-400 mt-1">
+                Groq: all 2 models • Gemini: quota models only. If transcription fails, try Flash Lite.
+              </p>
             </div>
 
-            {/* Target Script & Language Selection (2x2 Grid) */}
+            {/* Language Mode — sirf 2 options: Auto vs Manual */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <label className="text-slate-700 font-semibold text-xs flex items-center gap-1.5">
                   <Languages className="w-3.5 h-3.5 text-amber-600" />
-                  <span>Target Script &amp; Language</span>
+                  <span>Language</span>
                 </label>
                 <span className="text-[10px] text-amber-800 font-semibold bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
-                  {scriptStyle === "devanagari"
-                    ? "100% शुद्ध हिंदी (No English)"
-                    : scriptStyle === "roman"
-                    ? "Viral Reels Hinglish"
-                    : scriptStyle === "english"
-                    ? "English Subtitles"
-                    : "Verbatim Code-Switch"}
+                  {scriptStyle === "auto" ? "Auto Detect" : "Manual Select"}
                 </span>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
-                {SCRIPT_STYLE_OPTIONS.map((opt) => {
+                {SCRIPT_MODE_OPTIONS.map((opt) => {
                   const isSelected = scriptStyle === opt.id;
                   return (
                     <button
@@ -621,8 +1000,8 @@ export default function AudioToSrtTab({
                       type="button"
                       onClick={() => {
                         setScriptStyle(opt.id);
-                        setCustomPrompt(opt.prompt);
-                        setLanguage(opt.lang);
+                        if (opt.id === "auto") setLanguage("auto");
+                        else setLanguage("hi");
                       }}
                       className={`p-2.5 rounded-xl text-left transition-all border cursor-pointer flex flex-col justify-between gap-1.5 ${
                         isSelected
@@ -650,7 +1029,44 @@ export default function AudioToSrtTab({
                   );
                 })}
               </div>
+
+              {/* Manual language dropdown — sirf manual mode me */}
+              {scriptStyle === "manual" && (
+                <div className="mt-2">
+                  <label className="block text-slate-600 font-semibold mb-1 text-[11px]">
+                    Manual language (output will use this)
+                  </label>
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg bg-slate-50 border border-slate-300 text-slate-800 text-xs font-medium focus:outline-none focus:border-amber-500"
+                  >
+                    {MANUAL_LANGUAGES.map((l) => (
+                      <option key={l.code} value={l.code}>
+                        {l.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
+
+            {/* Chunked transcription toggle — prevents missing middle sections in long audio */}
+            <label className="flex items-start gap-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={useChunking}
+                onChange={(e) => setUseChunking(e.target.checked)}
+                className="mt-0.5 accent-amber-600"
+              />
+              <span>
+                <span className="font-semibold text-slate-700">60s chunks</span>
+                <span className="block text-[10.5px] text-slate-500 leading-snug mt-0.5">
+                  For audio over 2.5 min, Whisper may drop 10–40s in the middle (known issue). Small chunks prevent this.
+                  {duration > 150 ? " Your file is long — auto ON." : " Auto ON for files over 8MB."}
+                </span>
+              </span>
+            </label>
 
             {/* Advanced Model Context & Vocabulary Biasing */}
             <div className="border border-slate-200 rounded-xl overflow-hidden bg-slate-50/60">
@@ -668,7 +1084,7 @@ export default function AudioToSrtTab({
               {showAdvancedPrompt && (
                 <div className="p-3 border-t border-slate-200 bg-white space-y-2">
                   <p className="text-[10px] text-slate-500 leading-relaxed">
-                    Whisper aur Gemini ko script aur correct spelling sikhaane ke liye yeh context prompt use hota hai. Agar aapke audio me koi brand name ya technical words hain, to yahan likhein:
+                    This context prompt teaches the models the script and correct spellings. Add brand names or technical terms from your audio here:
                   </p>
                   <textarea
                     rows={2}
@@ -677,16 +1093,13 @@ export default function AudioToSrtTab({
                     className="w-full p-2 text-xs font-mono rounded-lg border border-slate-300 focus:outline-none focus:border-amber-500 leading-relaxed"
                   />
                   <div className="flex justify-between items-center text-[10px]">
-                    <span className="text-slate-400">Language Code: <b>{language}</b></span>
+                    <span className="text-slate-400">Effective: <b>{scriptStyle === "auto" ? "auto" : language}</b> • empty = no bias</span>
                     <button
                       type="button"
-                      onClick={() => {
-                        const found = SCRIPT_STYLE_OPTIONS.find((s) => s.id === scriptStyle);
-                        if (found) setCustomPrompt(found.prompt);
-                      }}
+                      onClick={() => setCustomPrompt("")}
                       className="text-amber-600 hover:underline font-semibold cursor-pointer"
                     >
-                      Reset to default
+                      Clear
                     </button>
                   </div>
                 </div>
@@ -896,11 +1309,11 @@ export default function AudioToSrtTab({
 
                 {onSendToSrtCleaner && (
                   <button
-                    onClick={() => onSendToSrtCleaner(srtResult)}
+                    onClick={() => onSendToSrtCleaner(srtResult, selectedFile, initialSourceLabel || "Transcribe tab", contextScript)}
                     className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-2xs cursor-pointer"
                   >
                     <Scissors className="w-3.5 h-3.5" />
-                    <span>Send to 5. SRT Cleaner ➔</span>
+                    <span>Send to {numberedTitle(ft, "srt-cleaner")} ➔</span>
                   </button>
                 )}
 
@@ -915,6 +1328,90 @@ export default function AudioToSrtTab({
               </div>
             )}
           </div>
+
+          {/* Sync Health + Sync Fix strip */}
+          {srtResult && cues.length > 0 && (
+            <div className="px-4 py-2 border-b border-slate-200 bg-white">
+              {scriptFixState?.needed && !scriptFixState.fixed && (
+                <div className="mb-2 p-2.5 rounded-xl bg-orange-50 border border-orange-300 text-orange-900 text-[11px] flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-semibold">
+                    ⚠️ Urdu script detected at the start (Whisper auto-detect glitch — Hindi audio was read as Urdu).
+                  </span>
+                  <button
+                    type="button"
+                    onClick={fixUrduScript}
+                    disabled={fixingUrdu}
+                    className="px-2.5 py-1 rounded-lg bg-orange-500 hover:bg-orange-400 disabled:opacity-50 text-white font-bold cursor-pointer"
+                  >
+                    {fixingUrdu ? "Fixing..." : "Convert to Hindi (Devanagari)"}
+                  </button>
+                </div>
+              )}
+              {scriptFixState?.fixed && (
+                <div className="mb-2 px-2.5 py-1.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-[11px] font-semibold">
+                  Urdu→Hindi script auto-fix applied{scriptFixState.changed > 0 ? ` (${scriptFixState.changed} cues)` : ""} — timestamps unchanged.
+                </div>
+              )}
+              <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                {uploadMeta && (
+                  <span
+                    title={`Exact uploaded audio size: ${uploadMeta.bytes.toLocaleString("en-IN")} bytes${uploadMeta.fileName ? ` (${uploadMeta.fileName})` : ""} — Groq/Gemini response me bytes wapas nahi aata, ye server-confirmed size hai.`}
+                    className="px-2 py-0.5 rounded-full border font-semibold bg-sky-50 text-sky-700 border-sky-200"
+                  >
+                    ⬆️ {uploadMeta.display} uploaded ({uploadMeta.bytes.toLocaleString("en-IN")} bytes)
+                  </span>
+                )}
+                {timingMeta && (
+                  <span
+                    className={`px-2 py-0.5 rounded-full border font-semibold ${
+                      timingMeta.coveragePct < 85 || timingMeta.largestGapSec > 15
+                        ? "bg-rose-50 text-rose-700 border-rose-200"
+                        : timingMeta.estimated
+                        ? "bg-blue-50 text-blue-700 border-blue-200"
+                        : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                    }`}
+                  >
+                    {timingMeta.coveragePct < 85 || timingMeta.largestGapSec > 15
+                      ? `Coverage ${timingMeta.coveragePct}% • largest gap ${timingMeta.largestGapSec}s @ ${formatClock(timingMeta.largestGapAt)}`
+                      : timingMeta.estimated
+                      ? "AI-estimated timestamps"
+                      : `Coverage ${timingMeta.coveragePct}% • Word timestamps`}
+                    {timingMeta.retried ? " • auto-retry applied" : ""}
+                  </span>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setShowSyncFix(!showSyncFix)}
+                  className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-700 text-white text-[11px] font-bold cursor-pointer"
+                >
+                  🔧 Sync Fix {showSyncFix ? "▲" : "▼"}
+                </button>
+              </div>
+              {showSyncFix && (
+                <div className="mt-2 p-2.5 rounded-xl bg-slate-50 border border-slate-200 space-y-2">
+                  <p className="text-[10.5px] text-slate-500 leading-relaxed">
+                    Start correct + end wrong = <b>drift</b> → Re-time or Stretch. Everything shifted = <b>offset</b> → −/+ seconds.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-semibold">
+                    <button
+                      type="button"
+                      onClick={retimeProportional}
+                      title="Redistribute across the full audio duration by word count (instant fix for AI drift)"
+                      className="px-2.5 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 cursor-pointer"
+                    >
+                      ⚖️ Proportional Re-time
+                    </button>
+                    <button type="button" onClick={() => shiftSync(-0.5)} className="px-2 py-1 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 cursor-pointer">−0.5s</button>
+                    <button type="button" onClick={() => shiftSync(0.5)} className="px-2 py-1 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 cursor-pointer">+0.5s</button>
+                    <button type="button" onClick={() => shiftSync(-0.1)} className="px-2 py-1 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 cursor-pointer">−0.1s</button>
+                    <button type="button" onClick={() => shiftSync(0.1)} className="px-2 py-1 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 cursor-pointer">+0.1s</button>
+                    <button type="button" onClick={() => stretchSync(0.99)} title="Shrink timeline by 1% (if subtitles run late)" className="px-2 py-1 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 cursor-pointer">0.99x</button>
+                    <button type="button" onClick={() => stretchSync(1.01)} title="Stretch timeline by 1% (if subtitles run early)" className="px-2 py-1 rounded-lg bg-white border border-slate-300 hover:bg-slate-100 cursor-pointer">1.01x</button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Main Content Area */}
           <div className="flex-1 overflow-hidden flex flex-col">
@@ -1153,10 +1650,10 @@ export default function AudioToSrtTab({
                       File: <b className="text-white">{selectedFile?.name || "audio.mp3"}</b> ({(selectedFile ? selectedFile.size / 1024 / 1024 : 0).toFixed(1)} MB)
                     </span>
                     <span className="px-2 py-0.5 rounded-md bg-slate-900 text-amber-300 border border-slate-800 font-semibold">
-                      Model: {engine === "groq-whisper-turbo" ? "Groq Whisper Large v3 Turbo" : engine === "groq-whisper-v3" ? "Groq Whisper Large v3" : "Google Gemini 2.5 Flash"}
+                      Model: {ENGINE_LABELS[engine] || engine}
                     </span>
                     <span className="px-2 py-0.5 rounded-md bg-slate-900 text-emerald-300 border border-slate-800">
-                      Script: {scriptStyle === "devanagari" ? "100% शुद्ध हिंदी (Devanagari)" : scriptStyle === "roman" ? "Reels Hinglish (Roman)" : scriptStyle === "english" ? "English Translation" : "Verbatim"}
+                      Lang: {scriptStyle === "auto" ? "Auto Detect" : language}
                     </span>
                   </div>
 
@@ -1395,8 +1892,8 @@ export default function AudioToSrtTab({
                 <FileText className="w-10 h-10 mb-2.5 stroke-[1.2] text-slate-300" />
                 <p className="text-xs font-semibold text-slate-700">No subtitles generated yet</p>
                 <p className="text-[11px] text-slate-400 mt-1 max-w-sm">
-                  Audio file upload karein aur &ldquo;Generate Subtitles&rdquo; par click karein. Subtitle bante hi yahan
-                  live video preview aur audio sync player active ho jayega.
+                  Upload an audio file and click &ldquo;Generate Subtitles&rdquo;. The live preview
+                  and audio sync player will activate here once subtitles are ready.
                 </p>
               </div>
             )}

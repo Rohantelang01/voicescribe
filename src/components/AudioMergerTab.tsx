@@ -19,6 +19,7 @@ import {
 import { PipelineVoiceoverPart, dataUrlToFile } from "@/lib/pipeline-store";
 import { saveAudioToQueue, getLatestAudioByTab } from "@/lib/audio-storage";
 import { generateSmartTitle } from "@/lib/title-generator";
+import { numberedTitle, useFeatureTitles } from "@/lib/feature-titles";
 import StudioAudioPlayer from "@/components/StudioAudioPlayer";
 
 interface AudioFileItem {
@@ -39,6 +40,7 @@ export default function AudioMergerTab({
   onSendToCleaner,
   onSendToTranscribe,
 }: AudioMergerTabProps) {
+  const ft = useFeatureTitles();
   const [fileList, setFileList] = useState<AudioFileItem[]>([]);
   const [outputFormat, setOutputFormat] = useState("mp3");
   const [bitrate, setBitrate] = useState(320);
@@ -169,8 +171,8 @@ export default function AudioMergerTab({
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Multiple audio files ko ek saath jodein bina kisi drift ya audio gap ke. Tracks ko reorder
-            karein aur lossless WAV ya high-bitrate MP3 me export karein.
+            Merge multiple audio files seamlessly without drift or gaps. Reorder tracks
+            and export as lossless WAV or high-bitrate MP3.
           </p>
         </div>
       </div>
@@ -366,7 +368,7 @@ export default function AudioMergerTab({
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-colors shadow-2xs cursor-pointer"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
-                      <span>Send to 3. Audio Cleaner ➔</span>
+                      <span>Send to {numberedTitle(ft, "cleaner")} ➔</span>
                     </button>
                   )}
 
@@ -380,7 +382,7 @@ export default function AudioMergerTab({
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition-colors shadow-2xs cursor-pointer"
                     >
                       <FileText className="w-3.5 h-3.5" />
-                      <span>Send to 4. Audio to SRT ➔</span>
+                      <span>Send to {numberedTitle(ft, "transcribe")} ➔</span>
                     </button>
                   )}
 

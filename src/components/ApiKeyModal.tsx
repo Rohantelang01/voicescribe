@@ -182,7 +182,7 @@ export default function ApiKeyModal({
               </span>
             </div>
             <p className="text-xs text-slate-500 leading-relaxed">
-              Instant subtitles aur audio-to-SRT ke liye use hota hai. Free key ke liye{" "}
+              Powers rapid transcription and audio-to-SRT. Get a free API key at{" "}
               <a
                 href="https://console.groq.com/keys"
                 target="_blank"
@@ -191,7 +191,7 @@ export default function ApiKeyModal({
               >
                 console.groq.com
               </a>{" "}
-              par login karein (2,000 requests/day free).
+              (2,000 requests/day on the free tier).
             </p>
             <div className="relative">
               <input
@@ -217,7 +217,7 @@ export default function ApiKeyModal({
               <div>
                 <span className="font-bold text-slate-900">Google Gemini API Keys Pool</span>
                 <p className="text-xs text-slate-500">
-                  Multiple Google Cloud projects add karein to maximize free quotas (10 RPD per model per project).
+                  Add multiple Google Cloud projects to maximize free quota pools across models.
                 </p>
               </div>
               <button

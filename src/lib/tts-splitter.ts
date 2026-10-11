@@ -36,11 +36,17 @@ export function normalizeScriptText(raw: string): string {
  * Target: ~350 to 390 words per part (~2.2 to 2.7 mins audio).
  * Gemini TTS maintains pristine voice stability, pacing, and presence when capped under 400 words.
  * Cuts ONLY at sentence full-stops (. ? ! ।) or paragraph ends.
+ *
+ * Optional `maxCharsPerPart`: jab set ho (e.g. 14500 for the 15,000-char server
+ * cap), chunk char budget par bhi kat-ta hai — har part budget ke nearest
+ * full-stop tak bharta hai. Word-target mode se bada chunk chahiye ho
+ * (server-limit split) to target/max words unchi pass karo taaki char cap drive kare.
  */
 export function splitScriptIntoSafeParts(
   rawScript: string,
   targetWordsPerPart = 360,
-  maxWordsPerPart = 400
+  maxWordsPerPart = 400,
+  maxCharsPerPart?: number
 ): ScriptChunk[] {
   const normalized = normalizeScriptText(rawScript);
   if (!normalized) return [];
@@ -70,38 +76,51 @@ export function splitScriptIntoSafeParts(
   const chunks: { text: string; wordCount: number }[] = [];
   let currentUnitList: string[] = [];
   let currentWordCount = 0;
+  let currentCharCount = 0;
 
   for (let i = 0; i < atomicUnits.length; i++) {
     const unit = atomicUnits[i];
     const unitWordCount = unit.split(/\s+/).length;
+    const unitCharCount = unit.length;
 
-    // Check if adding this unit crosses targetWordsPerPart
-    if (currentWordCount + unitWordCount > targetWordsPerPart && currentUnitList.length > 0) {
+    // Word target cross ho YA char budget cross ho → yahin full-stop par cut.
+    // (Single unit khud budget se badi ho to majbooran apna chunk banegi —
+    // mid-sentence cut kabhi nahi.)
+    const hitsWordTarget =
+      currentWordCount + unitWordCount > targetWordsPerPart && currentUnitList.length > 0;
+    const hitsCharBudget =
+      maxCharsPerPart !== undefined &&
+      currentUnitList.length > 0 &&
+      currentCharCount + unitCharCount + 2 > maxCharsPerPart;
+
+    if (hitsWordTarget || hitsCharBudget) {
       chunks.push({
         text: currentUnitList.join("\n\n").trim(),
         wordCount: currentWordCount,
       });
       currentUnitList = [unit];
       currentWordCount = unitWordCount;
+      currentCharCount = unitCharCount;
     } else {
       currentUnitList.push(unit);
       currentWordCount += unitWordCount;
+      currentCharCount += unitCharCount + 2; // "\n\n" separator
     }
   }
 
   // Push remaining units
   if (currentUnitList.length > 0) {
-    if (
-      chunks.length > 0 &&
-      currentWordCount < 60 &&
-      chunks[chunks.length - 1].wordCount + currentWordCount <= maxWordsPerPart
-    ) {
-      const last = chunks[chunks.length - 1];
-      last.text = `${last.text}\n\n${currentUnitList.join("\n\n").trim()}`;
+    const tailText = currentUnitList.join("\n\n").trim();
+    const last = chunks[chunks.length - 1];
+    const fitsWords = last && last.wordCount + currentWordCount <= maxWordsPerPart;
+    const fitsChars =
+      !maxCharsPerPart || !last || last.text.length + 2 + tailText.length <= maxCharsPerPart;
+    if (chunks.length > 0 && currentWordCount < 60 && fitsWords && fitsChars) {
+      last.text = `${last.text}\n\n${tailText}`;
       last.wordCount += currentWordCount;
     } else {
       chunks.push({
-        text: currentUnitList.join("\n\n").trim(),
+        text: tailText,
         wordCount: currentWordCount,
       });
     }

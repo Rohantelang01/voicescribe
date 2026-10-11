@@ -22,6 +22,7 @@ import {
   History,
 } from "lucide-react";
 import { dataUrlToFile } from "@/lib/pipeline-store";
+import { numberedTitle, useFeatureTitles } from "@/lib/feature-titles";
 import { saveAudioToQueue, getLatestAudioByTab } from "@/lib/audio-storage";
 import StudioAudioPlayer from "@/components/StudioAudioPlayer";
 
@@ -51,7 +52,7 @@ export const CLEANER_PRESETS: AudioCleanerPreset[] = [
     name: "⚡ Normal Audio (Fast Silence Cut)",
     tagline: "Natural Voice • Fast Viral Pacing",
     badge: "Default • Pure Voice",
-    description: "100% Original Voice preserved. Sirf pauses/silences trim honge fast video pacing ke liye. No AI denoising, Zero EQ color.",
+    description: "100% original voice preserved. Only trims pauses and silences for fast video pacing. No AI denoising, zero EQ coloration.",
     bassBoost: 0,
     midCut: 0,
     presenceBoost: 0,
@@ -70,7 +71,7 @@ export const CLEANER_PRESETS: AudioCleanerPreset[] = [
     name: "🎵 100% Raw Audio (Pass-Through)",
     tagline: "Untouched Original Audio",
     badge: "Zero Filters",
-    description: "No silence cut, No EQ, No compression. Original audio bina kisi badlav ke as-is rahega.",
+    description: "No silence cuts, no EQ, no compression. Keeps the original audio completely unchanged as-is.",
     bassBoost: 0,
     midCut: 0,
     presenceBoost: 0,
@@ -213,6 +214,7 @@ export default function AudioCleanerTab({
   onSendToTranscribe,
   onOpenHistory,
 }: AudioCleanerTabProps) {
+  const ft = useFeatureTitles();
   const [selectedFile, setSelectedFile] = useState<File | null>(initialFile || null);
 
   // Active Preset ID (Default: Normal Audio with Fast Silence Cut)
@@ -384,8 +386,8 @@ export default function AudioCleanerTab({
             </span>
           </div>
           <p className="text-xs text-slate-500 mt-1">
-            Zero-pumping two-pass loudness normalization, analog vocal warmth, crisp clarity, aur safe Reels silence trimming.
-            Audios automatically IndexedDB me store hoti hain (Max 20 queue) taaki refresh par kabhi delete na hon.
+            Zero-pumping two-pass loudness normalization, analog vocal warmth, crisp clarity, and safe silence trimming.
+            Audios are automatically saved to IndexedDB (up to 20 items) so they persist across page refreshes.
           </p>
         </div>
 
@@ -603,8 +605,8 @@ export default function AudioCleanerTab({
                 </div>
                 <p className="text-[10px] text-slate-500 leading-tight">
                   {compression === "none"
-                    ? "Off: Aawaz ke dynamic volume range ko bilkul touch nahi karega (100% Original Natural Voice)."
-                    : "On: Dheemi aur tez aawaz ko barabar karega (Smooth Vocal Leveling)."}
+                    ? "Off: Keeps the dynamic volume range untouched (100% natural voice)."
+                    : "On: Balances soft and loud passages (smooth vocal leveling)."}
                 </p>
                 {compression !== "none" && (
                   <div className="flex items-center gap-2 pt-1 border-t border-slate-200">
@@ -953,7 +955,7 @@ export default function AudioCleanerTab({
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-colors shadow-2xs cursor-pointer"
                     >
                       <FileText className="w-3.5 h-3.5" />
-                      <span>Send to 4. Audio to SRT ➔</span>
+                      <span>Send to {numberedTitle(ft, "transcribe")} ➔</span>
                     </button>
                   )}
                 </div>

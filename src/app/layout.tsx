@@ -13,9 +13,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Audio Studio | Local FFmpeg & Cloud AI",
+  title: "VoiceScribe — From Voice to Viral Subtitles",
   description:
-    "Multi-tool audio & video utility suite: Voiceover Studio (Prof. Arya), Audio to SRT, Audio Cleaner, Track Merger, and SRT Subtitle Formatter.",
+    "Open-source AI audio suite: voiceover studio, audio cleaner & merger, audio-to-SRT transcription (Groq Whisper, Gemini), live sync preview, and SRT transformer for Reels & Shorts.",
+  icons: {
+    icon: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({

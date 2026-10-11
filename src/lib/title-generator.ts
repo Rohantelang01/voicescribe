@@ -11,12 +11,22 @@ const STOP_WORDS = new Set([
   "shuru", "karte", "hain", "so", "let", "start", "watch", "until", "end"
 ]);
 
+function fallbackName(prefix: string): string {
+  const t = new Date().toLocaleString([], {
+    day: "numeric",
+    month: "short",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${prefix} • ${t}`;
+}
 /**
- * Generates a clean 3-5 word title from text content (Hindi, Hinglish, or English)
+ * Generates a clean 3-5 word title from text content (Hindi, Hinglish, or English).
+ * Topic na mile to random number ki jagah date-time fallback (pehchanne me aasan).
  */
 export function generateSmartTitle(text: string, fallbackPrefix = "Audio Track"): string {
   if (!text || !text.trim()) {
-    return `${fallbackPrefix} #${Math.floor(100 + Math.random() * 900)}`;
+    return fallbackName(fallbackPrefix);
   }
 
   // Clean lines & special chars
@@ -27,7 +37,7 @@ export function generateSmartTitle(text: string, fallbackPrefix = "Audio Track")
     .filter(Boolean);
 
   if (words.length === 0) {
-    return `${fallbackPrefix} #${Math.floor(100 + Math.random() * 900)}`;
+    return fallbackName(fallbackPrefix);
   }
 
   // Filter conversational intros/stop words
@@ -52,5 +62,5 @@ export function generateSmartTitle(text: string, fallbackPrefix = "Audio Track")
     formattedTitle = formattedTitle.slice(0, 37).trim() + "...";
   }
 
-  return formattedTitle || `${fallbackPrefix} #${Math.floor(100 + Math.random() * 900)}`;
+  return formattedTitle || fallbackName(fallbackPrefix);
 }

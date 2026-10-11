@@ -12,6 +12,9 @@ import {
   RotateCcw,
   Plus,
   Volume2,
+  Copy,
+  Check,
+  Bot,
 } from "lucide-react";
 import {
   PersonaConfig,
@@ -22,6 +25,11 @@ import {
   importPersonasFromJson,
   resetPersonasToDefaults,
 } from "@/lib/personas";
+import {
+  PERSONA_BUILDER_PROMPT,
+  PERSONA_BUILDER_PROMPT_FILENAME,
+} from "@/lib/persona-builder-prompt";
+import type { TTSPoolState } from "@/lib/tts-projects";
 
 interface PersonaModalProps {
   isOpen: boolean;
@@ -29,6 +37,8 @@ interface PersonaModalProps {
   currentPersona: PersonaConfig;
   allPersonas: Record<string, PersonaConfig>;
   onPersonasChange: (updatedPersonas: Record<string, PersonaConfig>, activeId: string) => void;
+  poolState: TTSPoolState;
+  onOpenKeys: () => void;
 }
 
 export default function PersonaModal({
@@ -37,10 +47,19 @@ export default function PersonaModal({
   currentPersona,
   allPersonas,
   onPersonasChange,
+  poolState,
+  onOpenKeys,
 }: PersonaModalProps) {
   const [formData, setFormData] = useState<PersonaConfig>(currentPersona);
   const [isEditingExisting, setIsEditingExisting] = useState(true);
   const [exportJsonUrl, setExportJsonUrl] = useState<string | null>(null);
+  const [showBuilderPrompt, setShowBuilderPrompt] = useState(false);
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [showAiGen, setShowAiGen] = useState(false);
+  const [aiDesc, setAiDesc] = useState("");
+  const [aiProvider, setAiProvider] = useState<"groq" | "gemini">("groq");
+  const [aiGenerating, setAiGenerating] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     setFormData(currentPersona);
@@ -122,16 +141,20 @@ Pacing: Steady flowing pace (~145 WPM). Natural brief pauses at commas and full 
       const reader = new FileReader();
       reader.onload = (event) => {
         const text = event.target?.result as string;
+        const beforeIds = new Set(Object.keys(allPersonas));
         const result = importPersonasFromJson(text);
         if (result) {
-          alert("Personas imported successfully!");
-          onPersonasChange(result, Object.keys(result)[0]);
+          const freshIds = Object.keys(result).filter((k) => !beforeIds.has(k));
+          const pick = freshIds[0] || Object.keys(result).pop()!;
+          alert("Persona imported successfully!");
+          onPersonasChange(result, pick);
         } else {
-          alert("Invalid persona JSON file.");
+          alert("Invalid persona JSON file — no valid character found.");
         }
       };
       reader.readAsText(file);
     }
+    e.target.value = "";
   };
 
   const handleResetDefaults = () => {
@@ -140,6 +163,62 @@ Pacing: Steady flowing pace (~145 WPM). Natural brief pauses at commas and full 
       onPersonasChange(reset, "arya");
       onClose();
     }
+  };
+
+  const handleCopyBuilderPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(PERSONA_BUILDER_PROMPT);
+      setCopiedPrompt(true);
+      setTimeout(() => setCopiedPrompt(false), 1500);
+    } catch {
+      alert("Copy failed — please manually select and copy from the preview below.");
+    }
+  };
+
+  const handleDownloadBuilderPrompt = () => {
+    const blob = new Blob([PERSONA_BUILDER_PROMPT], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = PERSONA_BUILDER_PROMPT_FILENAME;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  // Studio ke andar hi AI se character banao (hamare free models se, no copy-paste)
+  const handleAiGenerate = async () => {
+    if (!aiDesc.trim() || aiGenerating) return;
+    const hasGroq = !!poolState.groqApiKey?.trim();
+    const activeProj = poolState.projects.find((p) => p.id === poolState.activeProjectId) || poolState.projects[0];
+    const hasGemini = !!activeProj?.apiKey?.trim();
+    if (!hasGroq && !hasGemini) {
+      setAiError("Pehle API key dalo (upar Keys button se).");
+      onOpenKeys();
+      return;
+    }
+    setAiGenerating(true);
+    setAiError(null);
+    try {
+      const res = await fetch("/api/build-persona", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          description: aiDesc.trim(),
+          provider: hasGroq ? aiProvider : "gemini",
+          groqApiKey: poolState.groqApiKey || "",
+          geminiApiKey: activeProj?.apiKey || "",
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || "AI generate fail");
+      setFormData(data.persona);
+      setIsEditingExisting(false);
+      setShowAiGen(false);
+      setAiDesc("");
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "AI generate fail ho gaya");
+    }
+    setAiGenerating(false);
   };
 
   return (
@@ -180,6 +259,100 @@ Pacing: Steady flowing pace (~145 WPM). Natural brief pauses at commas and full 
 
         {/* Body */}
         <div className="p-6 overflow-y-auto space-y-5 text-xs text-slate-700">
+          {/* AI Character Builder Prompt — simple 3-step, koi complication nahi */}
+          <div className="rounded-xl border border-amber-300 bg-amber-50/60 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowBuilderPrompt(!showBuilderPrompt)}
+              className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-bold text-amber-900 hover:bg-amber-50 cursor-pointer"
+            >
+              <span className="flex items-center gap-1.5">
+                <Bot className="w-4 h-4" />
+                <span>Build Character with AI (ChatGPT / Claude / Gemini)</span>
+              </span>
+              <span className="text-[11px] font-semibold">{showBuilderPrompt ? "Hide ▲" : "Show ▼"}</span>
+            </button>
+            {showBuilderPrompt && (
+              <div className="px-4 pb-4 space-y-2.5">
+                <ol className="text-[11px] text-slate-600 space-y-1 list-decimal list-inside leading-relaxed">
+                  <li><b>Copy</b> the prompt below.</li>
+                  <li><b>Paste</b> into ChatGPT / Claude / Gemini — it will interview you about voice style, pacing, and tone.</li>
+                  <li>Answer the questions — it will output a <b>JSON</b> block. Import that JSON below with <b>Import JSON</b>.</li>
+                </ol>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCopyBuilderPrompt}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold cursor-pointer"
+                  >
+                    {copiedPrompt ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedPrompt ? "Copied!" : "Copy Prompt"}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDownloadBuilderPrompt}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-semibold cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download .txt</span>
+                  </button>
+                </div>
+                <pre className="max-h-56 overflow-y-auto whitespace-pre-wrap text-[10px] font-mono bg-white border border-amber-200 rounded-lg p-3 text-slate-700 leading-relaxed">
+                  {PERSONA_BUILDER_PROMPT}
+                </pre>
+              </div>
+            )}
+          </div>
+
+          {/* AI Generate directly inside studio */}
+          <div className="rounded-xl border border-emerald-300 bg-emerald-50/60 overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowAiGen(!showAiGen)}
+              className="w-full px-4 py-2.5 flex items-center justify-between text-xs font-bold text-emerald-900 hover:bg-emerald-50 cursor-pointer"
+            >
+              <span className="flex items-center gap-1.5">
+                <Sparkles className="w-4 h-4" />
+                <span>Instant In-Studio Generator (Groq / Gemini)</span>
+              </span>
+              <span className="text-[11px] font-semibold">{showAiGen ? "Hide ▲" : "Show ▼"}</span>
+            </button>
+            {showAiGen && (
+              <div className="px-4 pb-4 space-y-2.5">
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Describe your character in 1–2 sentences — the form will auto-fill, then click <b>Save Persona</b>.
+                </p>
+                <textarea
+                  value={aiDesc}
+                  onChange={(e) => setAiDesc(e.target.value)}
+                  rows={2}
+                  placeholder="e.g. Young energetic tech educator, natural conversational flow, authoritative yet approachable"
+                  className="w-full p-2.5 rounded-lg bg-white border border-slate-300 text-xs text-slate-800 focus:outline-none focus:border-emerald-500 leading-relaxed"
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={aiProvider}
+                    onChange={(e) => setAiProvider(e.target.value as "groq" | "gemini")}
+                    className="px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-xs font-medium text-slate-700 focus:outline-none cursor-pointer"
+                  >
+                    <option value="groq">Groq GPT-OSS (fast)</option>
+                    <option value="gemini">Gemini Flash-Lite</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={handleAiGenerate}
+                    disabled={aiGenerating || !aiDesc.trim()}
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>{aiGenerating ? "Generating..." : "Generate Character"}</span>
+                  </button>
+                </div>
+                {aiError && <p className="text-[11px] text-rose-600 font-medium">{aiError}</p>}
+              </div>
+            )}
+          </div>
+
           {/* Identity Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-3.5">
             <div className="sm:col-span-2">
@@ -263,7 +436,7 @@ Pacing: Steady flowing pace (~145 WPM). Natural brief pauses at commas and full 
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-80 overflow-y-auto pr-1">
               {GEMINI_VOICES.map((v) => {
                 const isSelected = formData.baseVoice === v.id;
                 return (

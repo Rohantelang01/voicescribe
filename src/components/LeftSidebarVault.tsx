@@ -32,6 +32,7 @@ import {
   MAX_AUDIO_LIMIT,
   MAX_SRT_LIMIT,
 } from "@/lib/audio-storage";
+import { numberedTitle, useFeatureTitles } from "@/lib/feature-titles";
 
 interface LeftSidebarVaultProps {
   onLoadAudioToTab?: (item: StoredAudioItem, targetTab: string) => void;
@@ -39,11 +40,57 @@ interface LeftSidebarVaultProps {
   currentActiveTab?: string;
 }
 
+// Raw sourceTab ids ko human-readable naam (kaunsi cheez kahan se aayi)
+const SOURCE_LABELS: Record<string, string> = {
+  studio: "🎙️ Studio",
+  merger: "🔗 Merger",
+  cleaner: "🧹 Cleaner",
+  transcribe: "🎧 Audio→SRT",
+  "audio-to-srt": "🎧 Audio→SRT",
+  "srt-cleaner": "✨ SRT Clean",
+};
+
+const STYLE_LABELS: Record<string, string> = {
+  auto: "Auto",
+  manual: "Manual",
+  devanagari: "Pure Hindi",
+  roman: "Roman",
+  english: "English",
+  hinglish: "Hinglish",
+  "translate-en": "→EN",
+  "translate-hi": "→HI",
+  clean: "Cleaned",
+  captions: "Captions",
+  custom: "Custom",
+};
+
+function formatVaultDate(ts: number): string {
+  if (!ts) return "";
+  try {
+    const d = new Date(ts);
+    const today = new Date();
+    const sameDay = d.toDateString() === today.toDateString();
+    const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    if (sameDay) return `aaj ${time}`;
+    return `${d.toLocaleDateString([], { day: "numeric", month: "short" })} ${time}`;
+  } catch {
+    return "";
+  }
+}
+
+function formatBytes(n: number): string {
+  if (!n || isNaN(n)) return "";
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(0)} KB`;
+  return `${(n / 1024 / 1024).toFixed(1)} MB`;
+}
+
 export default function LeftSidebarVault({
   onLoadAudioToTab,
   onLoadSrtToTab,
   currentActiveTab,
 }: LeftSidebarVaultProps) {
+  const ft = useFeatureTitles();
   const [isOpen, setIsOpen] = useState<boolean>(true);
   const [vaultTab, setVaultTab] = useState<"audio" | "srt">("audio");
   const [audioList, setAudioList] = useState<StoredAudioItem[]>([]);
@@ -54,6 +101,18 @@ export default function LeftSidebarVault({
   // Mini In-Vault Audio Player
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const vaultAudioRef = useRef<HTMLAudioElement | null>(null);
+
+  // Mobile par drawer default band (screen cover na kare)
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) {
+      setIsOpen(false);
+    }
+  }, []);
+
+  // Mobile drawer se tab me bhejo to drawer band karo (desktop rail untouched)
+  const closeOnMobile = () => {
+    if (typeof window !== "undefined" && window.innerWidth < 768) setIsOpen(false);
+  };
 
   const refreshVault = async () => {
     try {
@@ -132,9 +191,11 @@ export default function LeftSidebarVault({
       />
 
       <aside
-        className={`transition-all duration-300 ease-in-out shrink-0 select-none ${
-          isOpen ? "w-80" : "w-12"
-        } hidden md:flex flex-col border-r border-slate-200 bg-white shadow-xs z-20`}
+        className={`shrink-0 select-none transition-all duration-300 ease-in-out flex-col border-slate-200 bg-white shadow-xs z-50 md:z-20 min-h-0 ${
+          isOpen
+            ? "flex fixed md:static top-0 md:top-auto left-0 h-dvh md:h-full w-[86vw] max-w-xs md:w-80 border-r"
+            : "hidden md:flex md:h-full md:w-12 md:border-r"
+        }`}
       >
         {/* Sidebar Header */}
         <div className="p-3 border-b border-slate-200 flex items-center justify-between bg-slate-50/80">
@@ -173,7 +234,7 @@ export default function LeftSidebarVault({
         </div>
 
         {isOpen ? (
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 flex flex-col overflow-hidden min-h-0">
             {/* Vault Tabs: 🎵 Audios vs 📝 SRTs */}
             <div className="grid grid-cols-2 p-2 gap-1.5 border-b border-slate-100 bg-slate-50/50 text-xs font-bold">
               <button
@@ -208,7 +269,7 @@ export default function LeftSidebarVault({
             </div>
 
             {/* List Body */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-2">
+            <div className="flex-1 overflow-y-auto min-h-0 p-2 space-y-2 overscroll-contain">
               {vaultTab === "audio" ? (
                 /* ─── AUDIO ITEMS ─── */
                 audioList.length === 0 ? (
@@ -216,7 +277,7 @@ export default function LeftSidebarVault({
                     <FileAudio className="w-8 h-8 mx-auto text-slate-300 opacity-60" />
                     <p className="font-semibold text-slate-600">No Audios Saved Yet</p>
                     <p className="text-[11px] text-slate-400">
-                      Voiceover generate karein ya Audio Cleaner use karein, yahan auto-save ho jayegi.
+                      Generated voiceovers and cleaned audios will automatically appear here.
                     </p>
                   </div>
                 ) : (
@@ -235,16 +296,21 @@ export default function LeftSidebarVault({
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
                             <h4 className="font-bold text-slate-900 truncate text-[11.5px]" title={item.name}>
-                              {item.name}
+                              🎧 {item.name}
                             </h4>
                             <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-500">
                               <span className="font-mono font-semibold text-slate-700">
                                 {formatSeconds(item.durationSeconds)}
                               </span>
                               <span>&bull;</span>
-                              <span className="px-1.5 py-0.2 rounded font-semibold uppercase bg-slate-100 text-slate-600">
-                                {item.sourceTab}
+                              <span>{formatBytes(item.sizeBytes)}</span>
+                              <span>&bull;</span>
+                              <span className="px-1.5 py-0.2 rounded font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                                {SOURCE_LABELS[item.sourceTab] || item.sourceTab}
                               </span>
+                            </div>
+                            <div className="text-[9.5px] text-slate-400 mt-0.5">
+                              Audio file • {formatVaultDate(item.createdAt)}
                             </div>
                           </div>
 
@@ -268,16 +334,16 @@ export default function LeftSidebarVault({
                             {onLoadAudioToTab && (
                               <>
                                 <button
-                                  onClick={() => onLoadAudioToTab(item, "cleaner")}
+                                  onClick={() => { onLoadAudioToTab(item, "cleaner"); closeOnMobile(); }}
                                   className="px-1.5 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold cursor-pointer border border-amber-200"
-                                  title="Send to Audio Cleaner"
+                                  title={`Send to ${ft.cleaner}`}
                                 >
                                   ➔ Cleaner
                                 </button>
                                 <button
-                                  onClick={() => onLoadAudioToTab(item, "transcribe")}
+                                  onClick={() => { onLoadAudioToTab(item, "transcribe"); closeOnMobile(); }}
                                   className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold cursor-pointer"
-                                  title="Send to Audio to SRT"
+                                  title={`Send to ${ft.transcribe}`}
                                 >
                                   ➔ SRT
                                 </button>
@@ -329,7 +395,7 @@ export default function LeftSidebarVault({
                         <div className="flex items-start justify-between gap-2">
                           <div className="min-w-0 flex-1">
                             <h4 className="font-bold text-slate-900 truncate text-[11.5px]" title={item.name}>
-                              {item.name}
+                              📝 {item.name}
                             </h4>
                             <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-500">
                               <span className="font-bold text-blue-700 bg-blue-50 px-1.5 py-0.2 rounded border border-blue-200">
@@ -337,9 +403,15 @@ export default function LeftSidebarVault({
                               </span>
                               {item.scriptStyle && (
                                 <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-medium">
-                                  {item.scriptStyle}
+                                  {STYLE_LABELS[item.scriptStyle] || item.scriptStyle}
                                 </span>
                               )}
+                              <span className="px-1.5 py-0.2 rounded font-semibold bg-amber-50 text-amber-800 border border-amber-200">
+                                {SOURCE_LABELS[item.sourceTab] || item.sourceTab}
+                              </span>
+                            </div>
+                            <div className="text-[9.5px] text-slate-400 mt-0.5">
+                              Subtitle file • {formatVaultDate(item.createdAt)}
                             </div>
                           </div>
 
@@ -359,16 +431,16 @@ export default function LeftSidebarVault({
                             {onLoadSrtToTab && (
                               <>
                                 <button
-                                  onClick={() => onLoadSrtToTab(item, "transcribe")}
+                                  onClick={() => { onLoadSrtToTab(item, "transcribe"); closeOnMobile(); }}
                                   className="px-1.5 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-800 font-semibold cursor-pointer border border-amber-200"
                                   title="Open in Live Sync Preview"
                                 >
                                   ➔ Preview
                                 </button>
                                 <button
-                                  onClick={() => onLoadSrtToTab(item, "srt-cleaner")}
+                                  onClick={() => { onLoadSrtToTab(item, "srt-cleaner"); closeOnMobile(); }}
                                   className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold cursor-pointer"
-                                  title="Send to 5. SRT Cleaner"
+                                  title={`Send to ${numberedTitle(ft, "srt-cleaner")}`}
                                 >
                                   ➔ 5. Cleaner
                                 </button>
@@ -450,6 +522,29 @@ export default function LeftSidebarVault({
           </div>
         )}
       </aside>
+
+      {/* Mobile: backdrop + floating vault button */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-slate-900/40 md:hidden"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+      {!isOpen && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="md:hidden fixed bottom-4 right-4 z-40 flex items-center gap-1.5 px-3.5 py-2.5 rounded-full bg-amber-500 text-slate-950 text-xs font-bold shadow-lg shadow-amber-500/30 cursor-pointer"
+          title="Open Asset Vault"
+        >
+          <FolderArchive className="w-4 h-4" />
+          <span>Vault</span>
+          {(audioList.length > 0 || srtList.length > 0) && (
+            <span className="min-w-5 h-5 px-1 rounded-full bg-slate-950 text-amber-400 text-[10px] font-bold flex items-center justify-center">
+              {audioList.length + srtList.length}
+            </span>
+          )}
+        </button>
+      )}
     </>
   );
 }

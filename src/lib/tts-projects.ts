@@ -11,6 +11,10 @@ export const TTS_MODELS = [
     badge: "Fast & Stable",
     dailyLimit: 10,
     speedNote: "~1-2s per min audio",
+    // Preview gen: community reports ~5 min par cutoff/truncation. Conservative.
+    safeTargetWords: 300,
+    safeMaxWords: 345,
+    limitNote: "Preview model — long single requests may cut off (~5 min practical).",
   },
   {
     id: "gemini-3.1-flash-tts-preview",
@@ -18,6 +22,10 @@ export const TTS_MODELS = [
     badge: "Expressive",
     dailyLimit: 10,
     speedNote: "Expressive audio cues & nuance",
+    // Official docs: "quality may begin to drift beyond a few minutes — split into smaller chunks". Legacy.
+    safeTargetWords: 360,
+    safeMaxWords: 414,
+    limitNote: "Legacy preview — official docs warn of drift beyond a few minutes.",
   },
   {
     id: "gemini-3.8-flash-tts",
@@ -25,6 +33,11 @@ export const TTS_MODELS = [
     badge: "Latest Gen",
     dailyLimit: 10,
     speedNote: "High fidelity modern audio",
+    // Flagship long-form: "rock-solid voice and room-tone stability" for audiobooks/studio narration.
+    // Tested: 17-min single request, clean output.
+    safeTargetWords: 1800,
+    safeMaxWords: 2070,
+    limitNote: "Flagship long-form — stable up to ~15 min single requests (tested).",
   },
   {
     id: "gemini-3.8-flash-lite-tts",
@@ -32,10 +45,40 @@ export const TTS_MODELS = [
     badge: "Ultra-Light",
     dailyLimit: 10,
     speedNote: "Fast lightweight synthesis",
+    // 3.1 ka official replacement (workhorse). Koi drift warning nahi, lekin flagship long-form claim bhi nahi — mid value.
+    safeTargetWords: 700,
+    safeMaxWords: 805,
+    limitNote: "Modern workhorse — safe up to ~5 min single requests.",
   },
 ] as const;
 
 export type TTSModelId = (typeof TTS_MODELS)[number]["id"];
+
+export interface TTSModelLimits {
+  targetWords: number;
+  maxWords: number;
+  note: string;
+  modelName: string;
+}
+
+const FALLBACK_LIMITS: TTSModelLimits = {
+  targetWords: 360,
+  maxWords: 414,
+  note: "Default safe chunk.",
+  modelName: "TTS",
+};
+
+/** Selected (ya box-override) model ke hisab se safe per-part limits. Unknown id → fallback. */
+export function getTTSLimits(modelId: string): TTSModelLimits {
+  const m = TTS_MODELS.find((x) => x.id === modelId);
+  if (!m) return FALLBACK_LIMITS;
+  return {
+    targetWords: m.safeTargetWords,
+    maxWords: m.safeMaxWords,
+    note: m.limitNote,
+    modelName: m.name,
+  };
+}
 
 export interface ModelUsageStats {
   requestsCount: number;

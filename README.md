@@ -1,35 +1,56 @@
-# 🎙️ Audio Studio — Open-Source AI Voiceover & Audio Mastering Suite
+<div align="center">
 
-A fast, private, and customizable audio production suite for content creators, podcasters, and video makers. Built with Next.js 16, Tailwind CSS v4, local FFmpeg, Google Gemini TTS, and Groq Whisper.
+<img src="public/logo.svg" alt="VoiceScribe logo" width="96" />
 
----
+# VoiceScribe
 
-## ✨ Features at a Glance
+**From voice to viral subtitles — transcribe, sync, transform.**
 
-- **🔑 Unlimited Gemini API Keys Pool**: Add as many Google Cloud / Gemini API keys as you want with a single click. Rotate across projects to multiply your daily free generation quotas.
-- **⚡ Direct On-Screen Quick Switchers**: Switch your active Gemini API key, TTS model, or character persona directly from the top bar or inside each audio box—no digging into settings menus!
-- **🎭 Custom Voice Persona Builder**: Create, edit, and duplicate your own AI voice characters. Customize voice tones, age, gender, speed/pacing, directorial prompts, and script templates.
-- **📤 Export & Share Personas**: Download custom characters as JSON files and share them with the community or import characters created by others.
-- **⏱️ Smart 2–3 Minute Script Chunker**: Splits long scripts (10–60+ minutes) into optimal ~360-word boxes strictly at sentence full-stops (`.`, `?`, `!`, `।`) to prevent voice attention degradation.
-- **🎛️ Local FFmpeg Mastering Chain**:
-  - Sequential zero-drift concatenation.
-  - 80Hz high-pass de-rumble filter.
-  - FFT background noise reduction (`afftdn` for fan, AC, and mic hiss).
-  - Dynamic vocal leveling (`dynaudnorm`).
-  - EBU R128 loudness normalization (-14 LUFS for YouTube, Spotify, and Podcasts).
-  - Silence gap trimming (removes dead air > 0.5s).
-- **📝 Dual-Engine Subtitle Transcriber**:
-  - **Groq Whisper Large v3 Turbo** (Sub-second speed, 2,000 free requests/day, 8h/day audio).
-  - **Gemini 3.5 Transcribe** (Google AI word-level timestamps).
-- **📱 5–8 Words/Cue Roman Hinglish Subtitles**: Subtitle cues formatted strictly to 5–8 words per line in conversational Roman letters (`"Namaste dosto aaj hum..."`) tailored for high-retention Reels, Shorts, and TikTok.
-- **🔒 100% Client-Side Privacy**: All API keys, personas, and audio tracks are saved locally in your browser (`LocalStorage` and `IndexedDB`). Nothing is sent to any third-party database.
+Open-source AI audio suite for creators: voiceover studio, audio cleanup, fast speech-to-SRT transcription, live sync preview, and subtitle transformation for Reels, Shorts & podcasts. Hindi-first, but multilingual by design.
+
+![Next.js](https://img.shields.io/badge/Next.js-16-black)
+![React](https://img.shields.io/badge/React-19-61dafb)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind-4-38bdf8)
+![License: MIT](https://img.shields.io/badge/License-MIT-amber)
+
+</div>
 
 ---
 
-## 🚀 Quickstart Guide
+## ✨ Features
 
-### 1. Prerequisites
-Ensure you have **Node.js 18+**, **pnpm** (or npm), and **FFmpeg** installed:
+### 1. Voiceover Studio
+- Multi-project **Gemini API key pool** with per-model quota tracking and one-click rotation.
+- **Custom voice personas** (tone, age, pacing, directorial prompts) with JSON import/export — plus a one-click **AI Character Builder prompt**: paste it into ChatGPT/Claude/Gemini, answer its questions, import the JSON it returns (Roman-Hinglish voicing enforced by default).
+- **Smart script chunker** — splits long scripts at sentence boundaries so voice quality never degrades.
+- **Local FFmpeg mastering chain**: de-rumble, noise reduction (`afftdn`), vocal leveling, EBU R128 loudness normalization, silence trimming.
+
+### 2. Audio Cleaner & Merger
+- One-click denoise/level/normalize for any recording.
+- Combine multiple voiceover parts with zero-drift concatenation.
+
+### 3. Audio → SRT Transcription
+- **Groq Whisper** (`whisper-large-v3-turbo`, `whisper-large-v3`) with word-level timestamps.
+- **Gemini** dedicated transcribe model + Flash multimodal models (see [`docs/MODELS.md`](docs/MODELS.md)).
+- **Auto language detect** or manual selection across **25 languages** (Hindi, Hinglish-Roman, English + 22 more).
+- **Chunked transcription** for long audio (60s silence-cut WAV slices) — prevents the well-known Whisper "skipped middle chunk" problem.
+- **Sync Fix toolkit**: proportional re-time, ±offset, timeline stretch, plus a **Live Sync Preview** (Reel 9:16 / 16:9 mock player with karaoke transcript).
+
+### 4. SRT Transformer & Cleaner
+- One click: **Devanagari ↔ Roman Hinglish**, **translation**, **grammar cleanup against your exact script**, **viral caption styling**, or **fully custom instructions**.
+- Timestamps are **locked** — only subtitle text changes, never timing.
+- Runs on Groq (GPT-OSS, Qwen) and Gemini Flash text models with automatic fallback.
+
+### 5. Asset Vault & Sessions
+- Last 20 audios + 20 SRTs auto-saved in **IndexedDB** (FIFO), with readable titles, source labels, sizes and dates.
+- **Reload-proof sessions** — your pipeline (audio, SRT, script, active tab) survives refresh and tab switches; long tasks keep running in the background.
+
+---
+
+## 🚀 Quickstart
+
+### Prerequisites
+- **Node.js 20.19+** (Next.js 16 requirement — check with `node --version`), **pnpm 10+** (or npm), **FFmpeg**, **Git**
 
 ```bash
 # Ubuntu / Debian
@@ -42,102 +63,127 @@ brew install ffmpeg
 choco install ffmpeg
 ```
 
-### 2. Clone & Install
+### Install & Run
 
 ```bash
-git clone https://github.com/your-username/audio-studio.git
-cd audio-studio
+git clone https://github.com/<your-username>/voicescribe.git
+cd voicescribe
 pnpm install
-```
-
-### 3. Run Development Server
-
-```bash
 pnpm dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Open [http://localhost:3000](http://localhost:3000) in your browser. Or use the launcher:
+
+```bash
+./start.sh
+```
 
 ---
 
-## 🔑 Getting Free API Keys
+## 🔑 API Keys (all free-tier friendly)
 
-Audio Studio is designed to run entirely on **100% free-tier cloud APIs**:
+Keys are stored **only in your browser** (`localStorage`) — they never touch any database of ours.
 
-1. **Google Gemini TTS**:
-   - Go to [Google AI Studio](https://aistudio.google.com/app/apikey).
-   - Create an API key.
-   - You can create multiple Google Cloud projects to get **10 free requests per model per day** on each project.
-   - Supported models:
-     - `Gemini 2.5 Flash TTS`
-     - `Gemini 3.1 Flash TTS`
-     - `Gemini 3.8 Flash TTS`
-     - `Gemini 3.8 Flash Lite TTS`
+| Provider | Where to get it | Used for |
+|---|---|---|
+| [Groq Console](https://console.groq.com/keys) | Free account → API key (`gsk_…`) | Whisper transcription + GPT-OSS/Qwen text transforms |
+| [Google AI Studio](https://aistudio.google.com/app/apikey) | Free API key (`AIza…`) | Gemini TTS, transcription & text models |
 
-2. **Groq (Whisper Subtitles)**:
-   - Go to [Groq Console](https://console.groq.com/keys).
-   - Create a free account.
-   - Enjoy **2,000 free transcription requests per day** with sub-second latency.
+Add them via the **Keys** button in the header. You can add multiple Gemini projects to multiply daily quotas.
+
+> **Privacy note:** transcription and AI transforms run on Groq/Google servers, so audio/text is sent to those providers when you click Generate/Transform. Everything else (keys, vault, session) stays in your browser.
 
 ---
 
-## 🎙️ Available Gemini TTS Voices
+## 🧠 Transcription Engines
 
-| Voice | Gender | Tone & Style | Best Used For |
-| :--- | :---: | :--- | :--- |
-| **Kore** | Female | Warm, lower-medium pitch, rich chest resonance | Documentaries, History, Deep Explainers |
-| **Aoede** | Female | Breezy, natural conversational, upbeat | Finance, Tutorials, Vlogs, Commercials |
-| **Zephyr** | Female | Soft, gentle, compassionate, steady | Meditation, Bedtime Stories, Guides |
-| **Puck** | Male | Energetic, youthful, punchy, casual | Tech Reviews, Gaming, YouTube Shorts |
-| **Charon** | Male | Deep, authoritative, grave baritone | Horror, Thriller, True Crime, Movie Trailers |
-| **Fenrir** | Male | Resonant, articulate narrative presence | Audiobooks, Biography, Philosophy |
-| **Enceladus** | Male | Crisp, bold, executive presentation tone | News reporting, Tech pitches, Announcements |
+| Engine | Speed | Notes |
+|---|---|---|
+| Groq `whisper-large-v3-turbo` | Ultra fast (default) | 99+ languages, word timestamps |
+| Groq `whisper-large-v3` | Slower, most accurate | Best for difficult audio |
+| Gemini `3.5-transcribe` | Dedicated STT | Very low quota — use sparingly |
+| Gemini Flash / Lite family | Fast | Direct SRT output, high quotas |
+
+Details, quotas and fallback chains: [`docs/MODELS.md`](docs/MODELS.md).
 
 ---
 
 ## 🛠️ Project Structure
 
 ```
-audio-studio/
+voicescribe/
 ├── src/
 │   ├── app/
 │   │   ├── api/
-│   │   │   ├── tts/             # Gemini TTS PCM-to-WAV proxy
-│   │   │   ├── master/          # FFmpeg multi-part mastering & concat
-│   │   │   ├── clean-audio/     # FFmpeg standalone denoiser & leveler
-│   │   │   ├── merge-audio/     # FFmpeg audio track concat
-│   │   │   └── transcribe/      # Dual-engine Groq Whisper & Gemini 3.5
-│   │   ├── page.tsx             # Main orchestrator
-│   │   └── layout.tsx           # Off-white light theme container
+│   │   │   ├── tts/              # Gemini TTS proxy
+│   │   │   ├── master/           # FFmpeg multi-part mastering
+│   │   │   ├── clean-audio/      # FFmpeg denoise & level
+│   │   │   ├── merge-audio/      # Track concatenation
+│   │   │   ├── transcribe/       # Whisper + Gemini transcription
+│   │   │   ├── transform-srt/    # Subtitle text transforms (timestamps locked)
+│   │   │   └── build-persona/    # AI voice-character builder (JSON personas)
+│   │   ├── page.tsx              # Tab orchestrator + session persistence
+│   │   └── layout.tsx            # App metadata & theme
 │   ├── components/
-│   │   ├── Header.tsx           # Quick key/model/character toolbar & tabs
-│   │   ├── ApiKeyModal.tsx      # Unlimited API keys manager & quota tracker
-│   │   ├── PersonaModal.tsx     # Custom AI character & voice builder
-│   │   ├── StudioTab.tsx        # Voiceover production studio & chunker
-│   │   ├── AudioToSrtTab.tsx    # Dual-engine subtitle generator
-│   │   ├── AudioCleanerTab.tsx  # FFmpeg audio enhancer
-│   │   ├── AudioMergerTab.tsx   # Track combiner
-│   │   └── SrtCleanerTab.tsx    # Shorts/Reels subtitle re-chunker
+│   │   ├── Header.tsx            # Brand, numbered tabs, keys entry
+│   │   ├── ApiKeyModal.tsx       # Key pool & quota manager
+│   │   ├── PersonaModal.tsx      # Voice persona builder
+│   │   ├── StudioTab.tsx         # Voiceover production studio
+│   │   ├── StudioAudioPlayer.tsx # Studio playback engine
+│   │   ├── AudioHistoryModal.tsx # Past studio generations browser
+│   │   ├── AudioCleanerTab.tsx   # Audio enhancer
+│   │   ├── AudioMergerTab.tsx    # Track combiner
+│   │   ├── AudioToSrtTab.tsx     # Transcription + sync fix + preview
+│   │   ├── SrtCleanerTab.tsx     # SRT transformer
+│   │   ├── SrtSyncPreview.tsx    # Shared live sync preview player
+│   │   ├── LeftSidebarVault.tsx  # Asset vault sidebar
+│   │   └── ...
 │   └── lib/
-│       ├── personas.ts          # Persona registry & JSON import/export
-│       ├── tts-projects.ts      # Multi-key pool & quota management
-│       ├── tts-splitter.ts      # Strict 2–3 min script chunker
-│       ├── srt-chunker.ts       # 5–8 words/cue subtitle processor
-│       └── tts-audio-store.ts   # IndexedDB audio & draft storage
+│       ├── personas.ts           # Built-in voice personas & voice catalog
+│       ├── persona-builder-prompt.ts # AI Character Builder system prompt
+│       ├── tts-projects.ts       # Gemini key pool + quota bookkeeping
+│       ├── tts-splitter.ts       # Smart script chunker (sentence boundaries)
+│       ├── tts-audio-store.ts    # Studio generation history store
+│       ├── srt-chunker.ts        # SRT build / parse / limit engine
+│       ├── audio-chunker.ts      # 60s silence-cut WAV splitter
+│       ├── audio-storage.ts      # IndexedDB asset vault (20+20 FIFO)
+│       ├── pipeline-persist.ts   # Reload-proof session snapshots
+│       ├── pipeline-store.ts     # Cross-tab handoff helpers
+│       ├── feature-titles.ts     # Renamable tab titles (localStorage)
+│       ├── title-generator.ts    # Smart titles for vault items
+│       └── ...
+├── docs/
+│   ├── USAGE.md                  # End-to-end workflow guide
+│   ├── ARCHITECTURE.md           # Data flow & API reference
+│   └── MODELS.md                 # Model catalog, quotas & fallbacks
 ├── public/
-├── start.sh                     # Linux/Mac launcher script
-└── package.json
+│   ├── logo.svg                  # Brand mark
+│   └── favicon.svg               # Browser icon
+└── start.sh                      # Linux/macOS launcher
 ```
+
+---
+
+## 📚 Docs
+
+- [`INSTALLATIONGUIDE.md`](INSTALLATIONGUIDE.md) — install on your system, step by step (Linux / macOS / Windows)
+- [`docs/USAGE.md`](docs/USAGE.md) — step-by-step workflows for each tab
+- [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — data flow, API routes, storage
+- [`docs/MODELS.md`](docs/MODELS.md) — engines, quotas, fallback behavior
 
 ---
 
 ## 🤝 Contributing
 
-Contributions, issues, and feature requests are welcome!
-Feel free to open an issue or pull request.
+Issues and pull requests are welcome. For larger changes, please open an issue first to discuss what you'd like to change.
+
+```bash
+pnpm lint     # ESLint
+pnpm build    # Production build check
+```
 
 ---
 
 ## 📄 License
 
-This project is licensed under the [MIT License](LICENSE).
+MIT — see [LICENSE](LICENSE).
