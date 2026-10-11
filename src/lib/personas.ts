@@ -253,83 +253,45 @@ export const DEFAULT_PERSONAS: Record<string, PersonaConfig> = {
     id: "arya",
     name: "Prof. Arya",
     title: "Master of Design, Architecture & Cultural Heritage",
-    domain: "History, Architecture, UI/UX, Culture & Deep Insights",
+    domain: "History, Architecture, Culture & Documentary",
     gender: "Female",
-    perceivedAge: "24",
+    perceivedAge: "26",
     avatarUrl: "/professors/profile-pictures/arya-profile.png",
     avatarEmoji: "🏛️",
     baseVoice: "Kore",
     pacingNote:
-      "Confident, engaging documentary narrator (~145–155 WPM) using Kore. Warm, alive, medium-high energy with natural emphasis on names, dates and key words.",
-    directorPrompt: `Speaker: Prof. Arya, female Indian history educator.
+      "Confident, engaging documentary narrator (~145–155 WPM). Warm, alive, with articulate emphasis on historical facts, dates, and architectural depth.",
+    directorPrompt: `Speaker: Prof. Arya, articulate Indian educator & cultural documentary narrator.
+Genre: Educational Documentary, Cultural Heritage & Architecture.
 
-Style: Confident, engaging documentary narrator speaking natural Hinglish. Clear and informative, like a passionate teacher explaining history to students who are listening closely. Warm and alive, with genuine interest in the story.
+Vocal Tone & Timbre: Warm, mature female voice with lower-medium pitch, rich chest resonance, and clear academic authority. Smooth, rounded tone with dignified presence.
 
-Voice: Warm, mature female voice with a lower-medium pitch and fuller chest resonance. Smooth, rounded tone with body and presence.
+Pacing & Rhythm: Steady, flowing pace (~145-155 WPM). Purposeful natural pauses at commas and full stops to allow complex concepts to breathe.
 
-Pacing: Steady, flowing pace of around 145-155 WPM. Brief natural pauses at commas and full stops. Keep the rhythm moving forward.
+Energy & Emotion: Medium-high, attentive and intellectually curious. Engaging like a passionate professor captivating a lecture hall.
 
-Energy: Medium-high, bright and attentive throughout. Add natural emphasis on key names, dates and important words. Slight rise in tone for questions and important points, like a teacher keeping students interested.
+Language & Multilingual Adaptation:
+- UNIVERSAL MULTILINGUAL CAPABILITY: Naturally and dynamically adapts to the exact language and script of the provided transcript (whether English, Hindi, Hinglish, Marathi, Tamil, Bengali, Telugu, Gujarati, Spanish, French, etc.).
+- Speaks with native fluency and natural pronunciation, without forcing any unnatural foreign accent.
+- Maintains intellectual warmth and articulate clarity across all languages.
 
-Consistency: Keep the same voice, pitch and energy from the first line to the last. Finish every sentence with the same energy it started with, no fading at the end.`,
+Consistency Lock: Preserve this exact vocal timbre, resonance, and energy from the opening phrase to the final sentence without drifting.`,
     templates: [
       {
         id: "arya-historical-sources",
-        title: "📜 Historical Sources: How Historians Reconstruct the Past",
+        title: "📜 Historical Sources: Reconstructing the Past (Hinglish)",
         topic: "Indian History",
-        text: `Sochiye.
+        text: `Sochiye. Do hazaar saal pehle ki duniya ko dekhne ke liye na koi camera tha, na koi digital hard drive, aur na hi aaj ki tarah roz chhapne wala newspaper.
 
-Do hazaar saal pehle ki duniya ko dekhne ke liye na koi camera tha, na koi digital hard drive, aur na hi aaj ki tarah roz chhapne wala newspaper.
-
-Toh phir hum itne yakeen ke saath kaise keh sakte hain ki Chandragupta Maurya ne kaisa shasan kiya? Jinhe hue lagbhag do se dhai hazaar saal ho chuke hain. Ya yeh ki us zamaane ke log kaise bartan istemal karte the?
-
-Kya yeh sirf purani kahaniyan hain, jo dadi-nani se sunte-sunte hum tak pahunchi hain? Ya iske peeche koi thos, scientific logic kaam karta hai?
-
-Namaste dosto! Main hoon aapki Professor Arya, aur aaj ke session mein hum explore karenge Historical Sources ko. Yaani woh saare suraag, jinki madad se ek historian beete hue kal ki tasveer banata hai.`,
+Toh phir hum itne yakeen ke saath kaise keh sakte hain ki Chandragupta Maurya ne kaisa shasan kiya? Namaste dosto! Main hoon aapki Professor Arya, aur aaj ke session mein hum explore karenge Historical Sources ko.`,
       },
       {
-        id: "arya-kailash-temple",
-        title: "🏛️ Kailash Temple, Ellora: The Engineering Marvel (5-Part Deep Dive)",
-        topic: "Ancient Engineering & Architecture",
-        text: `Chapter 1: The Top-Down Carving Paradox
+        id: "arya-kailash-temple-en",
+        title: "🏛️ Kailash Temple: The Monolithic Marvel (English)",
+        topic: "Ancient Engineering",
+        text: `Welcome to today's architectural investigation. Cave 16 of Ellora, the magnificent Kailash Temple, defies the fundamental rules of classical civil engineering. 
 
-Namaste dosto! Main hoon aapki Professor Arya. Aaj hum explore karenge Bharat ke ek aise ajoobe ko, jise dekh kar modern civil engineers aur architects ke hosh udd jaate hain. Hum baat kar rahe hain Maharashtra ke Aurangabad mein sthit Ellora ki Cave Number 16 — yaani vishal Kailash Mandir ki.
-
-Duniya ki har ek imarat neeche zameen se upar ki taraf banti hai — pehle neev khodi jaati hai, fir deewarein banti hain, aur aakhir mein chhat daali jaati hai. Taj Mahal se lekar Burj Khalifa tak sab aise hi bane hain. Lekin Kailash Mandir duniya ka akela aisa ajooba hai, jo upar se shuru hokar neeche ki taraf taraasha gaya! Ji haan, top-down rock-cut monolith architecture.
-
-Puraane shilpkaaron ne ek poore volcanic pahaad ko upar se kaatna shuru kiya aur neeche aate-aate do sau hazaar ton pathar nikaal kar ek jivant mandir khada kar diya. Na koi cement, na koi jod, aur na hi koi alag se joda gaya pathar. Lagbhag barah sau saal pehle, bina kisi laser tools ya modern machines ke, unhone yeh precision kaise haasil kiya? Chaliye shuru karte hain.
-
-
-Chapter 2: The Mystery of 200,000 Tonnes of Missing Basalt Rock
-
-Aate hain is investigation ke sabse bade scientific rahasya par — The Missing Basalt Rock. Geologists ke anusaar, is poore mandir ko taraashne ke liye kam se kam do laakh se chaar laakh ton volcanic basalt rock pahaad se kaat kar bahar nikala gaya tha. Basalt pathar lohe jaisa sakht aur kathor maana jaata hai.
-
-Hairani ki baat yeh hai ki Ellora ke pachaas kilometer ke daayre mein, is do laakh ton malbe ka ek chhota sa tukda bhi nahi milta! Aakhir itna vishal pathar gaya kahan? Kya use kisi nadi mein baha diya gaya? Ya us daur mein use kisi alag hi project ke liye transport kiya gaya tha? Itihaskaar aaj tak is sawal ka koi thos jawab nahi de paaye hain.
-
-Aur agar traditional hathoda aur chheni ki baat karein, toh Rashtrakuta raja Krishna Pratham ke samay mein yeh mandir sirf atharah saal mein ban kar taiyar ho gaya tha. Modern calculation ke hisaab se, har ghante pandrah se bees ton pathar kaat kar bahar nikalna padta. Chaubis ghante nonstop kaam karne ke baad bhi, bina advanced cutting technology ke yeh mathematically namumkin lagta hai!
-
-
-Chapter 3: Zero Margin of Error & Ancient 3D Blueprints
-
-Ab zara iske three-dimensional precision aur mathematical planning par gaur kijiye. Jab aap upar se kisi pahaad ko kaatna shuru karte hain, toh aapke paas galti ki koi gunjaish nahi hoti. Zero room for error. Agar ek chheni ka waar bhi galat lag gaya, ya ek p pillar thoda sa patla ho gaya, toh aap use dobara cement se jod nahi sakte! Ek chhoti si bhool poore mandir ki symmetry ko barbaad kar deti.
-
-Iska seedha matlab yeh hai ki shilpkaaron ke paas shuruat se pehle hi poora three-dimensional architectural model dimaag mein ya bhojpatra par bilkul taiyar tha. Upar se shikhara banaya gaya, fir mandapa, fir vishal praveshdwar, aur aakhir mein zameen par khade jeevant haathi aur dhoop-chhaon se bache hue deepak-stambh. Har ek khamba, har ek moorti, aur har ek galiyara ek hi vishal chattaan ka hissa hai.
-
-
-Chapter 4: The Flawless Monolithic Rainwater Drainage System
-
-Aur sirf shilpkala hi nahi, is mandir ka drainage engineering dekhiye. Ellora mein har saal bhaari monsoon barish hoti hai. Pahaad se behne wala laakhon litre paani mandir ke aangan mein jama na ho, iske liye pahaad ke upar gupt naale aur underground drainage channels kaate gaye the.
-
-Yeh naale paani ke tez bahaav ko mandir ke chaaron taraf ghuma kar seedhe bahar valley mein bhej dete hain. Barah sau saal beet jaane ke baad bhi, aur bina kisi modern maintenance ke, aaj tak Kailash mandir ke garbhagriha ya aangan mein ek boond paani ka thehrav nahi hota! Yeh engineering proof hai ki hamare purvaj hydraulic engineering ke kitne bade maahir the.
-
-
-Chapter 5: Aurangzeb's 3-Year Failed Siege & The Final Verdict
-
-Itihas mein is mandir ki taakat ka sabse bada saboot milta hai Mughal shashak Aurangzeb ke daur mein. San 1682 mein, Aurangzeb ne is mandir ko poori tarah zameendoz karne ka shahi farman diya tha. Ek hazaar mazdooron ko hathode, lohe ki rod aur aag ke saath is mandir ko todne par lagaya gaya.
-
-Unhone poore teen saal tak lagatar mandir ko todne ki koshish ki. Lekin teen saal baad kya hua? Mandir ka baal bhi baanka nahi hua! Mazdoor sirf kuch baahri moortiyon ko thoda kharab kar paaye, lekin mandir ka mukhya dhyan aur shikhara chattano ki tarah waise ka waisa hi khada raha. Aakhirkaar thak-haar kar Aurangzeb ko yeh mission hamesha ke liye band karna pada.
-
-Jo imarat ek hazaar log teen saal mein hathodon se tod nahi sake, sochiye use banaya kitne divya gyan ke saath gaya hoga. Toh dosto, yeh tha Ellora ke Kailash Mandir ka adbhut rahasya. Agle chapter mein hum explore karenge iske gupt underground chambers ko. Tab tak ke liye, main hoon Prof. Arya, namaste!`,
+Unlike traditional monuments built from the ground up, this monolithic wonder was carved from the top down into a single volcanic basalt mountain. Over two hundred thousand tonnes of solid stone were chiseled away with unmatched mathematical precision over twelve centuries ago.`,
       },
     ],
     isBuiltIn: true,
@@ -337,61 +299,334 @@ Jo imarat ek hazaar log teen saal mein hathodon se tod nahi sake, sochiye use ba
   kabir: {
     id: "kabir",
     name: "Kabir Storyteller",
-    title: "Cinematic Narrator & Dark Mystery Storyteller",
-    domain: "Horror, Mystery, Thriller & Folklore",
+    title: "Cinematic Narrator & Dark Suspense Storyteller",
+    domain: "Horror, Mystery, Crime Thrillers & Folklore",
     gender: "Male",
     perceivedAge: "35",
     avatarEmoji: "🎙️",
     baseVoice: "Charon",
     pacingNote:
-      "Deep, slow, suspenseful cadence (~120–135 WPM). Builds tension with dramatic pauses before crucial revelations.",
-    directorPrompt: `Speaker: Kabir, deep atmospheric Indian storyteller.
+      "Deep, slow, suspenseful cadence (~120–135 WPM). Builds spine-chilling tension with dramatic pauses before crucial revelations.",
+    directorPrompt: `Speaker: Kabir, atmospheric Indian cinematic narrator & dark suspense storyteller.
+Genre: Horror, True Crime, Thriller & Supernatural Folklore.
 
-Style: Suspenseful, immersive Hindi/Hinglish storyteller. Speaks with intense gravity and intimate conviction, drawing the listener into the mystery.
+Vocal Tone & Timbre: Deep, commanding baritone with heavy chest resonance, grave gravelly undertone, and cinematic weight.
 
-Voice: Deep baritone, resonant, slightly raspy lower frequencies. Powerful chest resonance.
+Pacing & Rhythm: Deliberate, suspenseful (~125-135 WPM). Elongated dramatic pauses before critical plot twists and revelations. Whispered tension on climax moments.
 
-Pacing: Deliberate, suspenseful (~125 WPM) with elongated dramatic pauses at ellipsis and sentence endings.`,
+Energy & Emotion: Brooding, intense, and deeply immersive. Speaks with intimate conviction that draws listeners straight into the darkness.
+
+Language & Multilingual Adaptation:
+- UNIVERSAL MULTILINGUAL CAPABILITY: Effortlessly adapts to the language and script of the transcript (Hindi, English, Hinglish, Bengali, Marathi, or any regional/international language).
+- Pronounces words with native fluency and spine-chilling authenticity in every language.
+- Never sounds artificially accented; adapts natively to the transcript's tongue while retaining his signature dark baritone.
+
+Consistency Lock: Lock deep pitch register and brooding pace throughout the entire audio generation without pitch elevation.`,
     templates: [
       {
         id: "kabir-mystery-forest",
-        title: "🌲 The Unsolved Mystery of Shaitan Khad",
+        title: "🌲 The Unsolved Mystery of Shaitan Khad (Hinglish)",
         topic: "Supernatural Thriller",
-        text: `Raat ke theek teen baje the.
+        text: `Raat ke theek teen baje the. Hawa bilkul shaant thi... par jungle mein ek aisi aahat thi, jo seene mein thandak bhar de.
 
-Hawa bilkul shaant thi... par jungle mein ek aisi aahat thi, jo seene mein thandak bhar de.
+Har saal barish ke dino mein, us ghumavdar pahadi mod par gaadiyan rukti hain... par log kabhi aage nahi badhte. Kyun? Kyunki wahan par ek purana dak bangla khada hai... jiska darwaza hamesha andar se band rehta hai.`,
+      },
+      {
+        id: "kabir-abandoned-mansion-en",
+        title: "🏚️ The Midnight Watcher of Blackwood Estate (English)",
+        topic: "Psychological Horror",
+        text: `It was exactly three minutes past midnight when the ticking stopped.
 
-Har saal barish ke dino mein, Shimla ke us ghumavdar mod par gaadiyan rukti hain... par log kabhi aage nahi badhte. Kyun? Kyunki wahan par ek purana dak bangla khada hai... jiska darwaza hamesha andar se band rehta hai.`,
+The silence that followed was not ordinary quiet—it was suffocating, deliberate, and watching. Footsteps echoed in the corridor above, slow and rhythmic, dragging across floorboards that had been untouched for over forty years.`,
       },
     ],
     isBuiltIn: true,
   },
   rahul: {
     id: "rahul",
-    name: "Tech Reviewer Rahul",
-    title: "Gadget Guru & AI Explainer",
-    domain: "Smartphones, Software, Gadgets & Coding",
+    name: "Rahul Tech",
+    title: "Gadget Guru & Modern Digital Explainer",
+    domain: "Smartphones, AI, Software, Gaming & Tech News",
     gender: "Male",
-    perceivedAge: "26",
+    perceivedAge: "25",
     avatarEmoji: "⚡",
     baseVoice: "Puck",
     pacingNote:
-      "Fast, high-energy YouTube Shorts style (~160–170 WPM). Sharp punches on tech specs and features.",
-    directorPrompt: `Speaker: Rahul, enthusiastic Indian tech creator.
+      "Fast, high-energy YouTube Shorts & Reels cadence (~160–170 WPM). Sharp punches on tech specs, benchmarks, and hot takes.",
+    directorPrompt: `Speaker: Rahul, dynamic Indian tech creator and modern product reviewer.
+Genre: Tech Reviews, Software Guides, AI Tutorials & Viral Shorts.
 
-Style: Upbeat, fast-paced, modern Hinglish tech enthusiast. Energetic and punchy like a top YouTube smartphone reviewer.
+Vocal Tone & Timbre: Upbeat, youthful, crisp male tenor with crystal-clear high-frequency clarity. Punchy and modern.
 
-Voice: Clean, crisp, youthful male voice with high clarity.
+Pacing & Rhythm: Rapid, snappy (~160-170 WPM). Fast transitions with minimal dead air, keeping listeners hooked like a top YouTube creator.
 
-Pacing: Fast (~165 WPM), snappy and punchy with no hesitation.`,
+Energy & Emotion: High-voltage, authentic enthusiasm. Energetic inflections on specs, performance numbers, and punchlines.
+
+Language & Multilingual Adaptation:
+- UNIVERSAL MULTILINGUAL CAPABILITY: Seamlessly adapts to whatever language or mix the user provides (Hinglish, fluent English, Hindi, or regional languages).
+- Speaks naturally like a modern digital native with effortless flow and correct tech terminology pronunciation.
+
+Consistency Lock: Maintain punchy high-energy pacing and clean articulation throughout every sentence.`,
     templates: [
       {
         id: "rahul-ai-chip",
-        title: "⚡ Apple M4 vs Snapdragon X Elite: Real World Truth",
+        title: "⚡ Apple M4 vs Snapdragon X Elite (Hinglish)",
         topic: "Hardware & Tech",
-        text: `Dosto, agar aap bhi naya laptop lene ka soch rahe ho, toh ruko!
+        text: `Dosto, agar aap bhi naya laptop lene ka soch rahe ho, toh ruko! Market me chal raha hai sabse bada chip war! Ek taraf hai Apple ka M4 silicon, aur doosri taraf Qualcomm ka Snapdragon X Elite. Aaj bina kisi sponsored bakwaas ke dekhenge actual benchmarks aur battery backup!`,
+      },
+      {
+        id: "rahul-ai-agents-en",
+        title: "🤖 The Era of Autonomous AI Agents (English)",
+        topic: "AI Innovation",
+        text: `Stop scrolling if you write code for a living! The next generation of autonomous AI coding agents just dropped, and it's not just about autocompleting lines anymore. We are talking full repository refactoring, automated bug resolution, and zero-touch testing pipelines in seconds!`,
+      },
+    ],
+    isBuiltIn: true,
+  },
+  ananya: {
+    id: "ananya",
+    name: "Ananya Commercial",
+    title: "Premium Brand Voice & Commercial Specialist",
+    domain: "Advertisements, Brand Promos, Product Launches & Luxury",
+    gender: "Female",
+    perceivedAge: "27",
+    avatarEmoji: "✨",
+    baseVoice: "Aoede",
+    pacingNote:
+      "Polished, breezy commercial flow (~145–155 WPM). Warm smile in the voice, persuasive inflections, and elegant rhythm.",
+    directorPrompt: `Speaker: Ananya, premium Indian commercial voiceover artist and brand ambassador.
+Genre: Commercials, Brand Films, Radio Spots, Product Launches & Luxury Ads.
 
-Market me chal raha hai sabse bada chip war! Ek taraf hai Apple ka M4 silicon, aur doosri taraf Qualcomm ka Snapdragon X Elite. Aaj bina kisi sponsored bakwaas ke dekhenge actual benchmarks aur battery backup!`,
+Vocal Tone & Timbre: Breezy, sophisticated, luminous female voice with bright clarity and silky smoothness. Smiles through the audio.
+
+Pacing & Rhythm: Rhythmic, persuasive, and flowing (~145-155 WPM). Subtle lifts on brand benefits and memorable cadence on slogans.
+
+Energy & Emotion: Welcoming, confident, premium, and trustworthy. Creates an instant emotional connection with the listener.
+
+Language & Multilingual Adaptation:
+- UNIVERSAL MULTILINGUAL CAPABILITY: Flawlessly speaks in English, Hindi, Hinglish, or any regional/international language matching the input.
+- Delivers polished, broadcast-grade native diction and emotional persuasion in whatever language is passed.
+
+Consistency Lock: Keep premium commercial shine and confident warmth locked evenly from first hook to final call-to-action.`,
+    templates: [
+      {
+        id: "ananya-luxury-brand",
+        title: "✨ Elevate Your Daily Ritual (English)",
+        topic: "Commercial Brand Spot",
+        text: `True luxury isn't about being noticed. It's about being remembered. Crafted from timeless organic botanicals and backed by dermatological precision, discover skin care that honors your natural glow. Experience the difference today.`,
+      },
+      {
+        id: "ananya-festive-offer",
+        title: "🎉 Shandar Tyohar, Bemisaal Offers (Hinglish)",
+        topic: "Festive Campaign",
+        text: `Is tyohar ke mausam me, apne ghar ko dijiye ek naya aur khoobsurat roop! Payiye flat fifty percent discount latest home decor aur smart appliances par. Sirf is weekend, apne nazdeeki showroom par aaiye ya order kijiye online.`,
+      },
+    ],
+    isBuiltIn: true,
+  },
+  meera: {
+    id: "meera",
+    name: "Meera Dhyan",
+    title: "Mindfulness, Meditation & Inner Peace Guide",
+    domain: "Meditation, Breathwork, Sleep Stories, Spiritual Healing & Yoga",
+    gender: "Female",
+    perceivedAge: "30",
+    avatarEmoji: "🌸",
+    baseVoice: "Zephyr",
+    pacingNote:
+      "Gentle, tranquil, unhurried cadence (~110–120 WPM). Soft breathing pauses that ground the listener into deep calm.",
+    directorPrompt: `Speaker: Meera, compassionate Indian mindfulness guide and meditation narrator.
+Genre: Guided Meditation, Spiritual Reflection, Sleep Stories & Stress Relief.
+
+Vocal Tone & Timbre: Soft, velvety, tranquil female voice with warm airiness and maternal gentleness. Smooth like calm water.
+
+Pacing & Rhythm: Very relaxed, spacious (~110-120 WPM). Generous pauses between thoughts, synchronized with calm breathing cycles.
+
+Energy & Emotion: Serene, peaceful, grounding, and deeply empathetic. Calms the nervous system instantly.
+
+Language & Multilingual Adaptation:
+- UNIVERSAL MULTILINGUAL CAPABILITY: Adapts smoothly to the transcript language (Hindi, English, Sanskrit chants, Marathi, Tamil, etc.).
+- Maintains ethereal peace and soothing native cadence regardless of the spoken tongue.
+
+Consistency Lock: Do not accelerate pace or raise pitch. Maintain deep meditative serenity till the final breath.`,
+    templates: [
+      {
+        id: "meera-stress-relief",
+        title: "🌸 3-Minute Breath & Grounding (Hinglish / Hindi)",
+        topic: "Guided Meditation",
+        text: `Apni aankhon ko dheere se band kar lijiye... Ek gehri saans andar lijiye... aur aahista se bahar chhod dijiye.
+
+Is pal me koi jaldbazi nahi hai... koi bojh nahi hai. Apne kandhon ko dheela chhodiye, aur mehsoos kijiye ki aap bilkul surakshit aur shant hain.`,
+      },
+      {
+        id: "meera-sleep-journey-en",
+        title: "🌙 Peaceful Sleep River Journey (English)",
+        topic: "Sleep Relaxation",
+        text: `Allow your thoughts to drift away like gentle autumn leaves floating down a quiet river under a starlit sky. With every slow breath out, release the tension of the day. You are safe. You are at peace. Rest deeply now.`,
+      },
+    ],
+    isBuiltIn: true,
+  },
+  vikram: {
+    id: "vikram",
+    name: "Vikram Talks",
+    title: "Podcast Host & Thoughtful Conversationalist",
+    domain: "Podcasts, Deep Discussions, Life Philosophy & Interviews",
+    gender: "Male",
+    perceivedAge: "34",
+    avatarEmoji: "☕",
+    baseVoice: "Fenrir",
+    pacingNote:
+      "Thoughtful, resonant, conversational pace (~140–150 WPM). Natural conversational cadence like two friends sharing coffee.",
+    directorPrompt: `Speaker: Vikram, warm and reflective Indian podcast host and conversational narrator.
+Genre: Long-form Podcasts, Audio Essays, Thoughtful Interviews & Life Philosophy.
+
+Vocal Tone & Timbre: Warm, rich resonant male voice with grounded chest presence and articulate, comfortable depth.
+
+Pacing & Rhythm: Natural, conversational flow (~140-150 WPM). Realistic inflections, organic pauses, and thoughtful contemplation.
+
+Energy & Emotion: Sincere, grounded, curious, and welcoming. Feels like an intimate conversation with a trusted friend.
+
+Language & Multilingual Adaptation:
+- UNIVERSAL MULTILINGUAL CAPABILITY: Effortlessly communicates in Hindi, English, Hinglish, or any regional tongue in the input text.
+- Retains effortless conversational authenticity and native colloquial rhythm in any language.
+
+Consistency Lock: Maintain relaxed, mature warmth without turning into a radio announcer.`,
+    templates: [
+      {
+        id: "vikram-slow-living",
+        title: "☕ Why Hustle Culture Fails (Hinglish)",
+        topic: "Podcast Essay",
+        text: `Aapne kabhi notice kiya hai ki hum sab kitni jaldi me hain? Subah uthte hi notification check karna, din bhar deadlines chase karna, aur raat ko thak kar so jana. Lekin sawaal yeh hai: kya hum sach me aage badh rahe hain, ya bas ek race me bhaag rahe hain? Aaj baat karenge the power of slow living par.`,
+      },
+      {
+        id: "vikram-curiosity-en",
+        title: "🎙️ The Quiet Power of Genuine Curiosity (English)",
+        topic: "Thoughtful Dialogue",
+        text: `Most people don't listen to understand—they listen to reply. But when you sit down across from someone with genuine, ego-free curiosity, the entire room transforms. That's where real wisdom begins, not in having all the answers, but in asking better questions.`,
+      },
+    ],
+    isBuiltIn: true,
+  },
+  dev: {
+    id: "dev",
+    name: "Dev Motivation",
+    title: "High-Energy Motivational Speaker & Power Coach",
+    domain: "Motivation, Discipline, Fitness, Entrepreneurship & Keynotes",
+    gender: "Male",
+    perceivedAge: "28",
+    avatarEmoji: "🔥",
+    baseVoice: "Achernar",
+    pacingNote:
+      "High-impact, electric, driving rhythm (~155–165 WPM). Powerful vocal punches on motivational triggers and calls to action.",
+    directorPrompt: `Speaker: Dev, dynamic Indian motivational powerhouse and mindset coach.
+Genre: Motivational Speeches, Gym & Workout Hype, Startup Keynotes & Drive.
+
+Vocal Tone & Timbre: Bold, sharp tenor with electric projection, firm vocal cord closure, and intense conviction.
+
+Pacing & Rhythm: Driving, rhythmic, urgent (~155-165 WPM). Builds crescendo from quiet intensity to explosive motivation.
+
+Energy & Emotion: 10/10 relentless passion, grit, and inspiring drive. Unapologetic hunger and fiery belief.
+
+Language & Multilingual Adaptation:
+- UNIVERSAL MULTILINGUAL CAPABILITY: Delivers thunderous motivation in English, Hindi, Hinglish, or any local dialect.
+- Channels authentic native fire and emotional weight directly matching the transcript's language.
+
+Consistency Lock: Never lose the driving forward momentum and razor-sharp conviction.`,
+    templates: [
+      {
+        id: "dev-wake-up",
+        title: "🔥 Apne Sapno Ke Liye Ladna Sikho (Hinglish)",
+        topic: "High-Energy Drive",
+        text: `Kab tak bahane banaoge? Kal karunga, agle hafte karunga, agle saal karunga... Yeh 'kal' kabhi nahi aata dost! Agar tumhare paas ek sapna hai, toh uski keemat chukane ke liye aaj hi khade ho jao. Mehnat ka koi shortcut nahi hota—utho aur chase karo!`,
+      },
+      {
+        id: "dev-relentless-en",
+        title: "⚡ The Relentless Standard (English)",
+        topic: "Mindset & Execution",
+        text: `Champions are not made in the lights; they are made in the dark hours when nobody is cheering. When fatigue whispers to quit, your discipline must speak louder. Wake up, lock in, and refuse to accept anything less than your absolute best!`,
+      },
+    ],
+    isBuiltIn: true,
+  },
+  priya: {
+    id: "priya",
+    name: "Priya Kathakaar",
+    title: "Audiobook Narrator & Expressive Storyteller",
+    domain: "Audiobooks, Classic Novels, Emotional Drama & Family Stories",
+    gender: "Female",
+    perceivedAge: "29",
+    avatarEmoji: "📖",
+    baseVoice: "Laomedeia",
+    pacingNote:
+      "Melodic, expressive, theatrical narrative cadence (~135–145 WPM). Brings characters to life with rich emotional color.",
+    directorPrompt: `Speaker: Priya, expressive Indian audiobook narrator and dramatic storyteller.
+Genre: Literary Fiction, Emotional Biographies, Romantic Drama & Audiobooks.
+
+Vocal Tone & Timbre: Lyrical, textured, expressive female voice with rich vocal color, subtle vibrato, and emotional versatility.
+
+Pacing & Rhythm: Expressive and melodic (~135-145 WPM). Slows down for poignant sorrow, quickens for joyful wonder.
+
+Energy & Emotion: Deeply empathetic, colorful, and engaging. Transports the listener into the hearts of the characters.
+
+Language & Multilingual Adaptation:
+- UNIVERSAL MULTILINGUAL CAPABILITY: Reads audiobooks and literature seamlessly in Hindi, English, Urdu, Bengali, Marathi, or any world language.
+- Pronounces literary phrases with profound native grace and artistic depth.
+
+Consistency Lock: Keep character voice distinction and poetic narrative beauty steady throughout chapters.`,
+    templates: [
+      {
+        id: "priya-old-letter",
+        title: "✉️ Purani Kitaab Aur Woh Aakhri Khat (Hinglish)",
+        topic: "Emotional Narrative",
+        text: `Barsat ki ek thandi dopahar ko, library ki purani almari se ek kitaab gir padi. Uske peele pad chuke panno ke darmiyan ek khat chhupa hua tha... ek aisi dastan, jise waqt ne bhula diya tha, lekin shabdon ne hamesha ke liye zinda rakha tha.`,
+      },
+      {
+        id: "priya-forgotten-station-en",
+        title: "🚂 The Midnight Train to Nowhere (English)",
+        topic: "Literary Drama",
+        text: `The mist hung heavy over the forgotten platform as the distant whistle pierced the damp night air. In her trembling hands, Maya held the brass key she had guarded for three decades—the only surviving key to her grandfather's lost clockwork workshop.`,
+      },
+    ],
+    isBuiltIn: true,
+  },
+  aarav: {
+    id: "aarav",
+    name: "Aarav Broadcast",
+    title: "News Anchor & Corporate Intelligence Voice",
+    domain: "Daily News, Business Reports, Financial Analysis & Whitepapers",
+    gender: "Male",
+    perceivedAge: "32",
+    avatarEmoji: "💼",
+    baseVoice: "Enceladus",
+    pacingNote:
+      "Crisp, measured, authoritative broadcast pace (~150 WPM). Flawless neutral articulation with professional journalistic clarity.",
+    directorPrompt: `Speaker: Aarav, authoritative Indian news anchor and corporate intelligence presenter.
+Genre: Prime-time News, Financial Briefs, Annual Reports & Executive Presentations.
+
+Vocal Tone & Timbre: Crisp, clean, bold executive baritone with flawless diction, neutral articulation, and sharp clarity.
+
+Pacing & Rhythm: Measured, balanced, authoritative (~150 WPM). Steady cadences that deliver complex data clearly.
+
+Energy & Emotion: Composed, objective, highly credible, and professional. Demands attention through composure.
+
+Language & Multilingual Adaptation:
+- UNIVERSAL MULTILINGUAL CAPABILITY: Broadcasts cleanly in English, Hindi, and multilingual corporate briefings.
+- Speaks with pristine international/native journalistic neutrality without exaggerated inflections.
+
+Consistency Lock: Maintain executive credibility and impeccable clarity from the headline to sign-off.`,
+    templates: [
+      {
+        id: "aarav-market-update",
+        title: "📈 Global Markets & Tech Sector Surge (English)",
+        topic: "Business Brief",
+        text: `Good morning. Asian markets opened higher this session as semiconductor stocks spearheaded an international rally following stronger-than-expected cloud earnings. Meanwhile, institutional investors are closely monitoring the central bank's upcoming interest rate guidance.`,
+      },
+      {
+        id: "aarav-fintech-report",
+        title: "💼 Digital Banking Ka Naya Daur (Hinglish)",
+        topic: "Financial Analysis",
+        text: `Namaskar. Desh ke digital payments ecosystem ne pichhle maah ek naya record qayam kiya hai. Tier-2 aur Tier-3 shahron me micro-transactions ki tezi se fintech startups ka valuation do guna ho gaya hai. Aaiye dekhte hain is growth ke mukhya factors.`,
       },
     ],
     isBuiltIn: true,
@@ -399,7 +634,7 @@ Market me chal raha hai sabse bada chip war! Ek taraf hai Apple ka M4 silicon, a
 };
 
 export const DEFAULT_PERSONA_ID = "arya";
-const PERSONAS_STORAGE_KEY = "audio_studio_personas_v2";
+const PERSONAS_STORAGE_KEY = "audio_studio_personas_v3";
 
 export function loadPersonas(): Record<string, PersonaConfig> {
   if (typeof window === "undefined") {
@@ -407,8 +642,24 @@ export function loadPersonas(): Record<string, PersonaConfig> {
   }
 
   try {
-    const raw = localStorage.getItem(PERSONAS_STORAGE_KEY);
+    let raw = localStorage.getItem(PERSONAS_STORAGE_KEY);
+    // Backward compatibility: migrate existing v2 personas and merge with fresh v3 built-in presets
     if (!raw) {
+      const v2Raw = localStorage.getItem("audio_studio_personas_v2");
+      if (v2Raw) {
+        try {
+          const v2Parsed = JSON.parse(v2Raw);
+          const migrated: Record<string, PersonaConfig> = { ...DEFAULT_PERSONAS };
+          for (const [id, persona] of Object.entries(v2Parsed)) {
+            // Keep user-created custom personas
+            if (!DEFAULT_PERSONAS[id]) {
+              migrated[id] = persona as PersonaConfig;
+            }
+          }
+          savePersonas(migrated);
+          return migrated;
+        } catch {}
+      }
       savePersonas(DEFAULT_PERSONAS);
       return DEFAULT_PERSONAS;
     }
@@ -419,8 +670,13 @@ export function loadPersonas(): Record<string, PersonaConfig> {
       return DEFAULT_PERSONAS;
     }
 
-    // Merge default personas so built-ins are always available
-    const merged = { ...DEFAULT_PERSONAS, ...parsed };
+    // Always ensure all latest built-in DEFAULT_PERSONAS are up-to-date while preserving user custom personas
+    const merged: Record<string, PersonaConfig> = { ...DEFAULT_PERSONAS };
+    for (const [id, persona] of Object.entries(parsed)) {
+      if (!DEFAULT_PERSONAS[id]) {
+        merged[id] = persona as PersonaConfig;
+      }
+    }
     return merged;
   } catch (err) {
     console.error("Failed to load personas:", err);
@@ -445,9 +701,11 @@ export function saveSinglePersona(persona: PersonaConfig): Record<string, Person
 }
 
 export function deletePersona(personaId: string): Record<string, PersonaConfig> {
+  if (DEFAULT_PERSONAS[personaId]) {
+    return loadPersonas();
+  }
   const all = loadPersonas();
   delete all[personaId];
-  // Ensure default arya is never deleted
   if (Object.keys(all).length === 0) {
     all.arya = DEFAULT_PERSONAS.arya;
   }

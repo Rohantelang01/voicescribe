@@ -19,6 +19,7 @@ import {
 import {
   PersonaConfig,
   GEMINI_VOICES,
+  DEFAULT_PERSONAS,
   saveSinglePersona,
   deletePersona,
   exportPersonasToJson,
@@ -112,8 +113,8 @@ Pacing: Steady flowing pace (~145 WPM). Natural brief pauses at commas and full 
   };
 
   const handleDelete = () => {
-    if (formData.id === "arya") {
-      alert("Prof. Arya is the default built-in persona and cannot be deleted.");
+    if (formData.isBuiltIn || DEFAULT_PERSONAS[formData.id]) {
+      alert(`${formData.name} is a built-in character preset and cannot be deleted.`);
       return;
     }
     if (!confirm(`Are you sure you want to delete "${formData.name}"?`)) return;

@@ -19,15 +19,16 @@ const GEMINI_TEXT_MODELS = new Set([
 
 const VOICE_LINES = GEMINI_VOICES.map((v) => `- ${v.name} (${v.gender}) — ${v.tone}`).join("\n");
 
-const SYSTEM = `You design AI voiceover characters for VoiceScribe (Gemini TTS studio). The user describes the character in 1-2 lines — you decide everything else sensibly.
+const SYSTEM = `You design dynamic AI voiceover characters for VoiceScribe (Gemini TTS studio). The user describes the character in 1-2 lines — you decide everything else sensibly with authentic Indian character naming and genre styling.
 
 OUTPUT: ONLY raw JSON (no fences, no explanation), EXACTLY this shape with one unique key:
-{"persona_<name><timestamp>": {"id": same key, "name": ..., "title": ..., "domain": ..., "gender": "Female"|"Male", "perceivedAge": "25" (string), "avatarEmoji": "...", "baseVoice": ONE name from VOICE LIST (exact spelling), "pacingNote": "... (~145 WPM)", "directorPrompt": "Speaker: ...\\n\\nStyle: ...\\n\\nVoice: ...\\n\\nLanguage: ...\\n\\nPacing: ...", "templates": [{"id": "template_...", "title": ..., "topic": ..., "text": "2-4 lines sample script"}], "isBuiltIn": false}}
+{"persona_<name><timestamp>": {"id": same key, "name": ..., "title": ..., "domain": ..., "gender": "Female"|"Male", "perceivedAge": "25" (string), "avatarEmoji": "...", "baseVoice": ONE name from VOICE LIST (exact spelling), "pacingNote": "... (~145 WPM)", "directorPrompt": "Speaker: ...\\nGenre: ...\\n\\nVocal Tone & Timbre: ...\\n\\nPacing & Rhythm: ...\\n\\nEnergy & Emotion: ...\\n\\nLanguage & Multilingual Adaptation:\\n- Universal Multilingual Capability: Dynamically adapts to the input transcript language (English, Hindi, Hinglish, regional Indian languages, or global languages) with authentic native pronunciation and fluency while maintaining this character's signature tone.\\n\\nConsistency Lock: ...", "templates": [{"id": "template_...", "title": ..., "topic": ..., "text": "2-4 lines sample script"}], "isBuiltIn": false}}
 
 RULES:
 1. baseVoice MUST be exactly one name from VOICE LIST. gender must match it.
-2. DEFAULT language is Roman Hinglish (Latin letters, "Namaste doston" style) — directorPrompt MUST have a "Language:" line enforcing it, template text in same style. If user asks Pure Hindi → Devanagari; English → fluent English.
-3. perceivedAge is a string. No avatarUrl. No extra fields. Valid JSON only.
+2. Character names should be authentic Indian names (e.g. Arya, Kabir, Ananya, Rahul, Meera, Vikram, Dev, Priya, Aarav).
+3. MULTILINGUAL & INPUT-ADAPTIVE: The character MUST dynamically adapt to whatever language the user feeds in. The directorPrompt MUST include the "Language & Multilingual Adaptation" section ensuring native fluency in any language.
+4. perceivedAge is a string. No avatarUrl. No extra fields. Valid JSON only.
 
 VOICE LIST:
 ${VOICE_LINES}`;
