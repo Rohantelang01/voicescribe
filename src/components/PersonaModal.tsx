@@ -15,6 +15,7 @@ import {
   Copy,
   Check,
   Bot,
+  Clipboard,
 } from "lucide-react";
 import {
   PersonaConfig,
@@ -61,6 +62,9 @@ export default function PersonaModal({
   const [aiProvider, setAiProvider] = useState<"groq" | "gemini">("groq");
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
+  const [showPasteModal, setShowPasteModal] = useState(false);
+  const [pastedJsonText, setPastedJsonText] = useState("");
+  const [pasteJsonError, setPasteJsonError] = useState<string | null>(null);
 
   useEffect(() => {
     setFormData(currentPersona);
@@ -156,6 +160,27 @@ Pacing: Steady flowing pace (~145 WPM). Natural brief pauses at commas and full 
       reader.readAsText(file);
     }
     e.target.value = "";
+  };
+
+  const handleDirectPasteImport = () => {
+    setPasteJsonError(null);
+    const text = pastedJsonText.trim();
+    if (!text) {
+      setPasteJsonError("Please paste your character JSON first.");
+      return;
+    }
+    const beforeIds = new Set(Object.keys(allPersonas));
+    const result = importPersonasFromJson(text);
+    if (result) {
+      const freshIds = Object.keys(result).filter((k) => !beforeIds.has(k));
+      const pick = freshIds[0] || Object.keys(result).pop()!;
+      alert("Persona imported successfully!");
+      onPersonasChange(result, pick);
+      setShowPasteModal(false);
+      setPastedJsonText("");
+    } else {
+      setPasteJsonError("Invalid persona JSON — could not parse character. Please check that it has valid format.");
+    }
   };
 
   const handleResetDefaults = () => {
@@ -278,7 +303,7 @@ Pacing: Steady flowing pace (~145 WPM). Natural brief pauses at commas and full 
                 <ol className="text-[11px] text-slate-600 space-y-1 list-decimal list-inside leading-relaxed">
                   <li><b>Copy</b> the prompt below.</li>
                   <li><b>Paste</b> into ChatGPT / Claude / Gemini — it will interview you about voice style, pacing, and tone.</li>
-                  <li>Answer the questions — it will output a <b>JSON</b> block. Import that JSON below with <b>Import JSON</b>.</li>
+                  <li>Answer the questions — the AI will ask for your preferred language style, character details, and generate a <b>.json file or code block</b>. Click <b>Paste JSON</b> (or <b>Upload .json</b>) below to load it instantly!</li>
                 </ol>
                 <div className="flex flex-wrap items-center gap-2">
                   <button
@@ -511,9 +536,9 @@ Pacing: Steady flowing pace (~145 WPM). Natural brief pauses at commas and full 
               <span>Export JSON</span>
             </button>
 
-            <label className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-medium text-xs shadow-2xs transition-colors cursor-pointer">
+            <label className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-100 border border-slate-300 text-slate-700 font-medium text-xs shadow-2xs transition-colors cursor-pointer" title="Upload a .json file">
               <Upload className="w-3.5 h-3.5" />
-              <span>Import JSON</span>
+              <span>Upload .json</span>
               <input
                 type="file"
                 accept=".json"
@@ -521,6 +546,19 @@ Pacing: Steady flowing pace (~145 WPM). Natural brief pauses at commas and full 
                 className="hidden"
               />
             </label>
+
+            <button
+              type="button"
+              onClick={() => {
+                setShowPasteModal(true);
+                setPasteJsonError(null);
+              }}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-800 font-medium text-xs shadow-2xs transition-colors cursor-pointer"
+              title="Paste JSON copied from ChatGPT, Claude, or Gemini"
+            >
+              <Clipboard className="w-3.5 h-3.5 text-amber-700" />
+              <span>Paste JSON</span>
+            </button>
 
             <button
               onClick={handleResetDefaults}
@@ -559,6 +597,63 @@ Pacing: Steady flowing pace (~145 WPM). Natural brief pauses at commas and full 
             </button>
           </div>
         </div>
+
+        {/* Paste JSON Modal Dialog */}
+        {showPasteModal && (
+          <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl max-w-lg w-full p-5 shadow-2xl border border-slate-200 space-y-3.5 animate-in fade-in-50">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-bold text-slate-800 text-sm">Paste Character JSON</h3>
+                  <p className="text-[11px] text-slate-500">
+                    Paste the JSON block copied from ChatGPT, Claude, or Gemini. Quotes and formatting are auto-sanitized.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowPasteModal(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <textarea
+                value={pastedJsonText}
+                onChange={(e) => {
+                  setPastedJsonText(e.target.value);
+                  setPasteJsonError(null);
+                }}
+                rows={9}
+                placeholder={`{\n  "persona_rohan1760000000": {\n    "id": "persona_rohan1760000000",\n    "name": "Rohan Tech Guru",\n    ...\n  }\n}`}
+                className="w-full p-3 font-mono text-[11px] rounded-lg border border-slate-300 bg-slate-50 text-slate-800 focus:outline-none focus:border-amber-500 leading-relaxed shadow-inner"
+              />
+
+              {pasteJsonError && (
+                <p className="text-xs text-rose-600 font-medium bg-rose-50 p-2 rounded-md border border-rose-200">
+                  {pasteJsonError}
+                </p>
+              )}
+
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowPasteModal(false)}
+                  className="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDirectPasteImport}
+                  className="px-4 py-1.5 rounded-lg text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white shadow-2xs cursor-pointer"
+                >
+                  Import Character
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
