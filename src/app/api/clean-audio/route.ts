@@ -72,71 +72,81 @@ export async function POST(req: NextRequest) {
     const preFilters: string[] = [];
     const filterNames: string[] = [];
 
-    // 1. High-Pass Filter (removes sub-80Hz mic rumble before processing)
-    if (highpass) {
-      preFilters.push("highpass=f=80");
-      filterNames.push("80Hz High-Pass De-Rumble");
-    }
+    // Pass-Through Check: If normal_raw, skip all processing completely
+    const isRawPassThrough = preset === "normal_raw";
 
-    // 2. Denoise (Only for real mic recordings - NEVER for clean AI voice)
-    if (denoise === "mild") {
-      preFilters.push("afftdn=nr=8:nf=-52:tn=1");
-      filterNames.push("Subtle Hiss Reduction");
-    } else if (denoise === "aggressive") {
-      preFilters.push("afftdn=nr=14:nf=-48:tn=1");
-      filterNames.push("Room Noise Suppression");
-    }
+    if (!isRawPassThrough) {
+      // 1. High-Pass Filter (removes sub-80Hz mic rumble before processing so SFX & BGM sub-bass can breathe)
+      if (highpass) {
+        preFilters.push("highpass=f=80");
+        filterNames.push("80Hz High-Pass Sub-Rumble Cut");
+      }
 
-    // 3. Studio 4-Band Vocal EQ
-    if (bassBoost !== 0) {
-      preFilters.push(`equalizer=f=140:width_type=q:width=1.2:g=${bassBoost.toFixed(1)}`);
-      filterNames.push(`Warmth Chest Boost (${bassBoost > 0 ? "+" : ""}${bassBoost}dB @ 140Hz)`);
-    }
-    if (midCut !== 0) {
-      preFilters.push(`equalizer=f=380:width_type=q:width=1.2:g=${midCut.toFixed(1)}`);
-      filterNames.push(`De-Box Clarity Cut (${midCut > 0 ? "+" : ""}${midCut}dB @ 380Hz)`);
-    }
-    if (presenceBoost !== 0) {
-      preFilters.push(`equalizer=f=3200:width_type=q:width=1.4:g=${presenceBoost.toFixed(1)}`);
-      filterNames.push(`Vocal Presence & Bite (${presenceBoost > 0 ? "+" : ""}${presenceBoost}dB @ 3.2kHz)`);
-    }
-    if (airBoost !== 0) {
-      preFilters.push(`equalizer=f=10000:width_type=q:width=1.2:g=${airBoost.toFixed(1)}`);
-      filterNames.push(`Studio Sheen & Air (${airBoost > 0 ? "+" : ""}${airBoost}dB @ 10kHz)`);
-    }
+      // 2. Denoise (Only for real mic recordings - NEVER for clean AI voice)
+      if (denoise === "mild") {
+        preFilters.push("afftdn=nr=10:nf=-50:tn=1");
+        filterNames.push("Spectral Background Hiss Reduction");
+      } else if (denoise === "aggressive") {
+        preFilters.push("afftdn=nr=16:nf=-45:tn=1");
+        filterNames.push("Room Noise Suppression");
+      }
 
-    // 4. De-Esser (Softens harsh sibilance)
-    if (deesser) {
-      preFilters.push("equalizer=f=6800:width_type=q:width=1.5:g=-2.5");
-      filterNames.push("Studio De-Esser (Softens harsh S/Sh frequencies)");
-    }
+      // 3. Studio 4-Band Vocal EQ (Frequency Slotting for BGM & SFX coexistence)
+      if (bassBoost !== 0) {
+        preFilters.push(`equalizer=f=140:width_type=q:width=1.1:g=${bassBoost.toFixed(1)}`);
+        filterNames.push(`Vocal Body/Warmth (${bassBoost > 0 ? "+" : ""}${bassBoost}dB @ 140Hz)`);
+      }
+      if (midCut !== 0) {
+        preFilters.push(`equalizer=f=380:width_type=q:width=1.3:g=${midCut.toFixed(1)}`);
+        filterNames.push(`De-Box Mud Scoop (${midCut > 0 ? "+" : ""}${midCut}dB @ 380Hz)`);
+      }
+      if (presenceBoost !== 0) {
+        preFilters.push(`equalizer=f=3300:width_type=q:width=1.4:g=${presenceBoost.toFixed(1)}`);
+        filterNames.push(`Hero Speech Bite (${presenceBoost > 0 ? "+" : ""}${presenceBoost}dB @ 3.3kHz)`);
+      }
+      if (airBoost !== 0) {
+        preFilters.push(`equalizer=f=11000:width_type=q:width=1.2:g=${airBoost.toFixed(1)}`);
+        filterNames.push(`Studio Sheen & Air (${airBoost > 0 ? "+" : ""}${airBoost}dB @ 11kHz)`);
+      }
 
-    // 5. Dynamic Vocal Leveling (Smooth, not stacked with extreme compression)
-    if (dynaudnorm) {
-      preFilters.push("dynaudnorm=f=200:g=11:m=8:p=0.95");
-      filterNames.push("Natural Dynamic Vocal Leveler");
-    } else if (compression === "mild") {
-      preFilters.push("compand=attacks=0.04:decays=0.35:points=-70/-70|-45/-38|-20/-16|0/-2:soft-knee=6:gain=1");
-      filterNames.push("Smooth Optical Vocal Leveling");
-    } else if (compression === "heavy") {
-      preFilters.push("compand=attacks=0.02:decays=0.2:points=-70/-70|-40/-28|-15/-9|0/-1.5:soft-knee=6:gain=2");
-      filterNames.push("Punchy Broadcast Vocal Compression");
-    }
+      // 4. De-Esser (Softens harsh sibilance)
+      if (deesser) {
+        preFilters.push("equalizer=f=6800:width_type=q:width=1.8:g=-3.5");
+        filterNames.push("Studio De-Esser (Softens harsh S/Sh frequencies)");
+      }
 
-    // 6. Safe Silence Trimming (Leaves at least 150–250ms breathing so words are NEVER cut)
-    if (silenceTrim === "fast") {
-      preFilters.push("silenceremove=start_periods=1:start_duration=0.05:start_threshold=-48dB:stop_periods=-1:stop_duration=0.35:stop_threshold=-48dB:stop_silence=0.15");
-      filterNames.push("⚡ Fast Reels/Shorts Pacing (Trims pauses >0.35s to 150ms)");
-    } else if (silenceTrim === "moderate") {
-      preFilters.push("silenceremove=start_periods=1:start_duration=0.05:start_threshold=-50dB:stop_periods=-1:stop_duration=0.5:stop_threshold=-50dB:stop_silence=0.25");
-      filterNames.push("Natural Pacing Tightener (Trims pauses >0.5s to 250ms)");
+      // 5. Dynamic Compression & Peak Limiting (Tames Crest Factor)
+      if (compression === "heavy") {
+        preFilters.push("acompressor=threshold=-18dB:ratio=4:attack=5:release=70:makeup=3.5:knee=4");
+        preFilters.push("alimiter=limit=-1.0dB:attack=5:release=50");
+        filterNames.push("⚡ Punchy Viral VCA Compression & Peak Limiter");
+      } else if (compression === "mild") {
+        preFilters.push("acompressor=threshold=-21dB:ratio=2.8:attack=20:release=220:makeup=2:knee=6");
+        filterNames.push("🎙️ Smooth Optical Vocal Leveling");
+      } else if (dynaudnorm) {
+        preFilters.push("dynaudnorm=f=200:g=11:m=8:p=0.95");
+        filterNames.push("Natural Dynamic Vocal Leveler");
+      }
+
+      // 6. Intelligent Gated Silence Trimming (Downward Gate cleans room noise between words, then trims)
+      if (silenceTrim === "fast") {
+        preFilters.push("agate=range=0.02:threshold=-36dB:ratio=3:attack=10:release=120");
+        preFilters.push("silenceremove=start_periods=1:start_duration=0.02:start_threshold=-36dB:stop_periods=-1:stop_duration=0.18:stop_threshold=-36dB:stop_silence=0.08");
+        filterNames.push("⚡ Rapid Silence Cut & Gate (Pauses >180ms trimmed to 80ms for Viral Pacing)");
+      } else if (silenceTrim === "moderate") {
+        preFilters.push("agate=range=0.05:threshold=-42dB:ratio=2.5:attack=15:release=180");
+        preFilters.push("silenceremove=start_periods=1:start_duration=0.03:start_threshold=-42dB:stop_periods=-1:stop_duration=0.40:stop_threshold=-42dB:stop_silence=0.20");
+        filterNames.push("🎬 Natural Pacing Tightener (Pauses >400ms tightened to 200ms)");
+      }
+    } else {
+      filterNames.push("100% Raw Untouched Audio (Zero Filters)");
     }
 
     // 7. TWO-PASS REFERENCE EBU R128 LOUDNORM
     const targetLUFS = loudnorm === "podcast_16" ? -16 : -14;
     let finalFilterGraph = preFilters.length > 0 ? preFilters.join(",") : "anull";
 
-    if (loudnorm !== "none") {
+    if (!isRawPassThrough && loudnorm !== "none") {
       // PASS 1: Measurement pass
       const pass1Filter = `${finalFilterGraph},loudnorm=I=${targetLUFS}:TP=-1.5:LRA=11:print_format=json`;
       const pass1Args = ["-i", inPath, "-af", pass1Filter, "-f", "null", "-"];

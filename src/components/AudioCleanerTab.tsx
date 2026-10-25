@@ -48,11 +48,106 @@ export interface AudioCleanerPreset {
 
 export const CLEANER_PRESETS: AudioCleanerPreset[] = [
   {
+    id: "reels_fast",
+    name: "⚡ Reels & Shorts Viral Punch",
+    tagline: "Fast Pacing • High Retention • BGM Cut-Through",
+    badge: "Viral Hero",
+    description: "High-energy voice that cuts through loud BGM and SFX on phone speakers. Gated silence removal cuts all pauses >180ms down to 80ms with punchy VCA broadcast compression.",
+    bassBoost: 1.5,
+    midCut: -3.5,
+    presenceBoost: 5.0,
+    airBoost: 3.0,
+    compression: "heavy",
+    deesser: true,
+    denoise: "none",
+    highpass: true,
+    dynaudnorm: false,
+    loudnorm: "youtube_14",
+    silenceTrim: "fast",
+    resample48k: true,
+  },
+  {
+    id: "podcast_warm",
+    name: "🎙️ Studio Podcast Host",
+    tagline: "Shure SM7B Rich Radio Warmth",
+    badge: "Deep Warmth",
+    description: "Rich proximity chest warmth (+4.5dB @ 130Hz) and mud scoop. Smooth optical leveling with natural pauses 100% preserved. Sits in front of subtle acoustic BGM.",
+    bassBoost: 4.5,
+    midCut: -3.0,
+    presenceBoost: 3.0,
+    airBoost: 1.5,
+    compression: "mild",
+    deesser: true,
+    denoise: "none",
+    highpass: true,
+    dynaudnorm: false,
+    loudnorm: "podcast_16",
+    silenceTrim: "none",
+    resample48k: true,
+  },
+  {
+    id: "documentary",
+    name: "🎬 Cinematic Documentary",
+    tagline: "NatGeo / Storytelling Realism",
+    badge: "Cinema Master",
+    description: "Open, majestic cinematic voice. Sub-70Hz rumble cut leaves room for orchestral BGM and sub-impact SFX. Silky 11kHz sheen with natural dramatic pauses.",
+    bassBoost: 2.5,
+    midCut: -2.0,
+    presenceBoost: 2.5,
+    airBoost: 4.0,
+    compression: "none",
+    deesser: true,
+    denoise: "none",
+    highpass: true,
+    dynaudnorm: true,
+    loudnorm: "youtube_14",
+    silenceTrim: "moderate",
+    resample48k: true,
+  },
+  {
+    id: "crystal_clear",
+    name: "✨ AI Voice Naturalizer (De-Robotic)",
+    tagline: "Organic Tone • Removes AI Harshness",
+    badge: "De-Robotics",
+    description: "Removes synthetic metallic edge and sibilance from Gemini / Kokoro / ElevenLabs TTS. Infuses organic human chest warmth (+3dB @ 160Hz) for natural delivery.",
+    bassBoost: 3.0,
+    midCut: -2.5,
+    presenceBoost: 0.5,
+    airBoost: 0.5,
+    compression: "mild",
+    deesser: true,
+    denoise: "none",
+    highpass: true,
+    dynaudnorm: false,
+    loudnorm: "youtube_14",
+    silenceTrim: "moderate",
+    resample48k: true,
+  },
+  {
+    id: "raw_mic",
+    name: "🧹 Phone Mic & Noisy Room Restorer",
+    tagline: "Spectral Denoiser + Speech Clarity",
+    badge: "Room Denoiser",
+    description: "95Hz rumble cut + FFT background hiss remover + downward room gate. Turns phone and unpadded room recordings into clear, usable audio that won't buzz under BGM.",
+    bassBoost: 1.0,
+    midCut: -3.0,
+    presenceBoost: 3.5,
+    airBoost: 1.5,
+    compression: "mild",
+    deesser: true,
+    denoise: "mild",
+    highpass: true,
+    dynaudnorm: false,
+    loudnorm: "youtube_14",
+    silenceTrim: "moderate",
+    resample48k: true,
+  },
+  {
     id: "normal_silence",
     name: "⚡ Normal Audio (Fast Silence Cut)",
-    tagline: "Natural Voice • Fast Viral Pacing",
-    badge: "Default • Pure Voice",
-    description: "100% original voice preserved. Only trims pauses and silences for fast video pacing. No AI denoising, zero EQ coloration.",
+    tagline: "Pure Voice • Smart Gate Silence Cut",
+    badge: "Pure Pacing",
+    description: "100% original voice tone preserved with zero EQ coloration. Downward gate + rapid silence cutter removes all dead gaps (>180ms to 80ms) for punchy retention.",
     bassBoost: 0,
     midCut: 0,
     presenceBoost: 0,
@@ -71,7 +166,7 @@ export const CLEANER_PRESETS: AudioCleanerPreset[] = [
     name: "🎵 100% Raw Audio (Pass-Through)",
     tagline: "Untouched Original Audio",
     badge: "Zero Filters",
-    description: "No silence cuts, no EQ, no compression. Keeps the original audio completely unchanged as-is.",
+    description: "Zero processing. Keeps the original file completely untouched as-is without EQ, compression, or silence cuts.",
     bassBoost: 0,
     midCut: 0,
     presenceBoost: 0,
@@ -82,120 +177,6 @@ export const CLEANER_PRESETS: AudioCleanerPreset[] = [
     highpass: false,
     dynaudnorm: false,
     loudnorm: "none",
-    silenceTrim: "none",
-    resample48k: true,
-  },
-  {
-    id: "reels_fast",
-    name: "⚡ Reels & Shorts Viral Rush",
-    tagline: "Fast-Paced High Retention",
-    badge: "Fast Silence Cut",
-    description: "Trims pauses >0.35s down to 150ms for punchy video pacing. Crisp 3.2kHz presence & 2-Pass broadcast loudness.",
-    bassBoost: 1.0,
-    midCut: -1.5,
-    presenceBoost: 2.5,
-    airBoost: 1.5,
-    compression: "mild",
-    deesser: true,
-    denoise: "none",
-    highpass: true,
-    dynaudnorm: false,
-    loudnorm: "youtube_14",
-    silenceTrim: "fast",
-    resample48k: true,
-  },
-  {
-    id: "podcast_warm",
-    name: "🎙️ Studio Podcast Host",
-    tagline: "Shure SM7B Rich Warmth",
-    badge: "Deep Warmth",
-    description: "Deep chest warmth (+3dB @ 140Hz), mud cut (-2dB @ 380Hz), transparent leveling. Natural speech pauses 100% preserved.",
-    bassBoost: 3.0,
-    midCut: -2.0,
-    presenceBoost: 2.0,
-    airBoost: 1.5,
-    compression: "mild",
-    deesser: true,
-    denoise: "none",
-    highpass: true,
-    dynaudnorm: false,
-    loudnorm: "podcast_16",
-    silenceTrim: "none",
-    resample48k: true,
-  },
-  {
-    id: "documentary",
-    name: "🎬 Cinematic Documentary",
-    tagline: "NatGeo / Discovery Realism",
-    badge: "Cinema Master",
-    description: "Balanced clarity, natural dynamics, subtle gap tightening (>0.5s down to 250ms), and 48kHz studio air sheen.",
-    bassBoost: 1.5,
-    midCut: -1.5,
-    presenceBoost: 2.0,
-    airBoost: 2.0,
-    compression: "none",
-    deesser: true,
-    denoise: "none",
-    highpass: true,
-    dynaudnorm: false,
-    loudnorm: "youtube_14",
-    silenceTrim: "moderate",
-    resample48k: true,
-  },
-  {
-    id: "crystal_clear",
-    name: "✨ Crystal Clean AI Naturalizer",
-    tagline: "De-Robotics & Smooth",
-    badge: "Softens AI Top-End",
-    description: "Eliminates digital harshness and robotic sibilance from Gemini / TTS speech for a smooth, natural human tone.",
-    bassBoost: 1.5,
-    midCut: -1.5,
-    presenceBoost: 0.5,
-    airBoost: 0.5,
-    compression: "none",
-    deesser: true,
-    denoise: "none",
-    highpass: true,
-    dynaudnorm: false,
-    loudnorm: "youtube_14",
-    silenceTrim: "moderate",
-    resample48k: true,
-  },
-  {
-    id: "raw_mic",
-    name: "🧹 Raw Mic & Phone Fix",
-    tagline: "Noisy Room Cleaner",
-    badge: "Noise Suppressor",
-    description: "80Hz rumble cut + FFT background hiss remover + dynamic leveling for real recordings made on phones or unpadded rooms.",
-    bassBoost: 1.0,
-    midCut: -1.0,
-    presenceBoost: 2.0,
-    airBoost: 1.0,
-    compression: "mild",
-    deesser: true,
-    denoise: "mild",
-    highpass: true,
-    dynaudnorm: true,
-    loudnorm: "youtube_14",
-    silenceTrim: "moderate",
-    resample48k: true,
-  },
-  {
-    id: "transparent_level",
-    name: "🎛️ Reference Broadcast Norm",
-    tagline: "Pure 2-Pass EBU R128",
-    badge: "Zero EQ Color",
-    description: "100% transparent. No tonal changes. Only cleans low rumble and applies reference Two-Pass -14 LUFS loudness matching.",
-    bassBoost: 0,
-    midCut: 0,
-    presenceBoost: 0,
-    airBoost: 0,
-    compression: "none",
-    deesser: false,
-    denoise: "none",
-    highpass: true,
-    dynaudnorm: false,
-    loudnorm: "youtube_14",
     silenceTrim: "none",
     resample48k: true,
   },
@@ -217,20 +198,20 @@ export default function AudioCleanerTab({
   const ft = useFeatureTitles();
   const [selectedFile, setSelectedFile] = useState<File | null>(initialFile || null);
 
-  // Active Preset ID (Default: Normal Audio with Fast Silence Cut)
-  const [activePresetId, setActivePresetId] = useState<string>("normal_silence");
+  // Active Preset ID (Default: Reels & Shorts Viral Punch)
+  const [activePresetId, setActivePresetId] = useState<string>("reels_fast");
 
-  // DSP Parameters (Default: Zero AI alteration, purely natural voice)
-  const [bassBoost, setBassBoost] = useState<number>(0);
-  const [midCut, setMidCut] = useState<number>(0);
-  const [presenceBoost, setPresenceBoost] = useState<number>(0);
-  const [airBoost, setAirBoost] = useState<number>(0);
-  const [compression, setCompression] = useState<"none" | "mild" | "heavy">("none");
-  const [deesser, setDeesser] = useState<boolean>(false);
+  // DSP Parameters (Default: Reels Viral Punch)
+  const [bassBoost, setBassBoost] = useState<number>(1.5);
+  const [midCut, setMidCut] = useState<number>(-3.5);
+  const [presenceBoost, setPresenceBoost] = useState<number>(5.0);
+  const [airBoost, setAirBoost] = useState<number>(3.0);
+  const [compression, setCompression] = useState<"none" | "mild" | "heavy">("heavy");
+  const [deesser, setDeesser] = useState<boolean>(true);
   const [denoise, setDenoise] = useState<"none" | "mild" | "aggressive">("none");
-  const [highpass, setHighpass] = useState<boolean>(false);
+  const [highpass, setHighpass] = useState<boolean>(true);
   const [dynaudnorm, setDynaudnorm] = useState<boolean>(false);
-  const [loudnorm, setLoudnorm] = useState<"youtube_14" | "podcast_16" | "none">("none");
+  const [loudnorm, setLoudnorm] = useState<"youtube_14" | "podcast_16" | "none">("youtube_14");
   const [silenceTrim, setSilenceTrim] = useState<"none" | "moderate" | "fast">("fast");
   const [resample48k, setResample48k] = useState<boolean>(true);
 
@@ -650,7 +631,7 @@ export default function AudioCleanerTab({
                       <input
                         type="range"
                         min="-4"
-                        max="6"
+                        max="8"
                         step="0.5"
                         value={bassBoost}
                         onChange={(e) => {
@@ -662,12 +643,12 @@ export default function AudioCleanerTab({
                     </div>
                     <div>
                       <div className="flex justify-between text-slate-600 mb-1">
-                        <span>De-Box Mud Cut (380Hz)</span>
+                        <span>De-Box Mud Scoop (380Hz)</span>
                         <span className="font-bold text-amber-700">{midCut > 0 ? "+" : ""}{midCut} dB</span>
                       </div>
                       <input
                         type="range"
-                        min="-4"
+                        min="-6"
                         max="2"
                         step="0.5"
                         value={midCut}
@@ -680,13 +661,13 @@ export default function AudioCleanerTab({
                     </div>
                     <div>
                       <div className="flex justify-between text-slate-600 mb-1">
-                        <span>Presence &amp; Bite (3.2kHz)</span>
+                        <span>Hero Presence Bite (3.3kHz)</span>
                         <span className="font-bold text-amber-700">{presenceBoost > 0 ? "+" : ""}{presenceBoost} dB</span>
                       </div>
                       <input
                         type="range"
-                        min="-2"
-                        max="6"
+                        min="-4"
+                        max="8"
                         step="0.5"
                         value={presenceBoost}
                         onChange={(e) => {
@@ -698,13 +679,13 @@ export default function AudioCleanerTab({
                     </div>
                     <div>
                       <div className="flex justify-between text-slate-600 mb-1">
-                        <span>Air &amp; Sheen (10kHz)</span>
+                        <span>Studio Air &amp; Sheen (11kHz)</span>
                         <span className="font-bold text-amber-700">{airBoost > 0 ? "+" : ""}{airBoost} dB</span>
                       </div>
                       <input
                         type="range"
-                        min="-2"
-                        max="5"
+                        min="-4"
+                        max="7"
                         step="0.5"
                         value={airBoost}
                         onChange={(e) => {
