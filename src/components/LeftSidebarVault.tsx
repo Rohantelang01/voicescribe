@@ -97,6 +97,7 @@ export default function LeftSidebarVault({
   const [srtList, setSrtList] = useState<StoredSrtItem[]>([]);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [justAddedId, setJustAddedId] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
 
   // Mini In-Vault Audio Player
   const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
@@ -115,12 +116,26 @@ export default function LeftSidebarVault({
   };
 
   const refreshVault = async () => {
+    setIsRefreshing(true);
     try {
-      const [audios, srts] = await Promise.all([getAudioQueue(), getSrtQueue()]);
-      setAudioList(audios);
-      setSrtList(srts);
+      const [audiosRes, srtsRes] = await Promise.allSettled([
+        getAudioQueue(),
+        getSrtQueue(),
+      ]);
+      if (audiosRes.status === "fulfilled") {
+        setAudioList(audiosRes.value);
+      } else {
+        console.warn("Failed to get audio queue:", audiosRes.reason);
+      }
+      if (srtsRes.status === "fulfilled") {
+        setSrtList(srtsRes.value);
+      } else {
+        console.warn("Failed to get srt queue:", srtsRes.reason);
+      }
     } catch (e) {
       console.warn("Failed to refresh asset vault:", e);
+    } finally {
+      setTimeout(() => setIsRefreshing(false), 300);
     }
   };
 
@@ -224,13 +239,26 @@ export default function LeftSidebarVault({
             </div>
           )}
 
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="p-1 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 transition-colors cursor-pointer"
-            title={isOpen ? "Collapse Vault" : "Expand Vault"}
-          >
-            {isOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          </button>
+          <div className="flex items-center gap-1">
+            {isOpen && (
+              <button
+                onClick={() => refreshVault()}
+                className={`p-1 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 transition-colors cursor-pointer ${
+                  isRefreshing ? "animate-spin text-amber-600" : ""
+                }`}
+                title="Refresh Asset Vault"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <button
+              onClick={() => setIsOpen(!isOpen)}
+              className="p-1 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-200/60 transition-colors cursor-pointer"
+              title={isOpen ? "Collapse Vault" : "Expand Vault"}
+            >
+              {isOpen ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
 
         {isOpen ? (

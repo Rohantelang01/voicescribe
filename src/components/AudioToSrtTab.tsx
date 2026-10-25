@@ -27,6 +27,7 @@ import {
   Monitor,
   CheckCircle2,
   Edit3,
+  FolderArchive,
 } from "lucide-react";
 import { TTSPoolState, getRemainingRequests } from "@/lib/tts-projects";
 import { parseSrtCues, cuesToSrt, formatSrtTime, SrtCue } from "@/lib/srt-chunker";
@@ -225,6 +226,7 @@ export default function AudioToSrtTab({
   const [playbackRate, setPlaybackRate] = useState<number>(1);
   const [autoScroll, setAutoScroll] = useState<boolean>(true);
   const [editingCueId, setEditingCueId] = useState<number | null>(null);
+  const [vaultSaved, setVaultSaved] = useState<boolean>(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const activeCueRef = useRef<HTMLDivElement | null>(null);
@@ -332,7 +334,8 @@ export default function AudioToSrtTab({
       largestGapAt: number;
       retried: boolean;
       estimated: boolean;
-    } | null
+    } | null,
+    sourceAudioFile?: File | null
   ) => {
     // Stop every elapsed timer here — otherwise "Done (Ns)" keeps counting forever.
     if (timerRef.current) clearInterval(timerRef.current);
@@ -364,7 +367,7 @@ export default function AudioToSrtTab({
       smartTitle,
     }));
 
-    // Save to Asset Vault (IndexedDB 20 SRTs FIFO)
+    // 1. Save SRT to Asset Vault (IndexedDB 20 SRTs FIFO)
     try {
       await saveSrtToQueue({
         name: smartTitle,
@@ -374,31 +377,35 @@ export default function AudioToSrtTab({
         scriptStyle: effectiveScriptFx,
         filename: `${smartTitle.toLowerCase().replace(/\s+/g, "-")}.srt`,
       });
+    } catch (storageErr) {
+      console.warn("Failed to persist SRT to Asset Vault:", storageErr);
+    }
 
-      // Also persist audio in Asset Vault — File -> base64 dataUrl
-      // (blob: URL save karne par reload ke baad toot jata hai, isliye dataUrl)
+    // 2. Also persist audio in Asset Vault — File -> base64 dataUrl (independent of SRT save)
+    const audioTarget = sourceAudioFile || selectedFile;
+    if (audioTarget && audioTarget instanceof Blob) {
       try {
         const dataUrl: string = await new Promise((resolve, reject) => {
           const reader = new FileReader();
           reader.onload = () => resolve(reader.result as string);
           reader.onerror = () => reject(reader.error);
-          reader.readAsDataURL(selectedFile as File);
+          reader.readAsDataURL(audioTarget);
         });
-        const ext = (selectedFile as File).name.split(".").pop()?.toLowerCase() || "mp3";
+        const ext = audioTarget.name?.split(".").pop()?.toLowerCase() || "mp3";
         await saveAudioToQueue({
           name: smartTitle,
-          sourceTab: "transcribe",
+          sourceTab: "audio-to-srt",
           durationSeconds: duration,
-          sizeBytes: (selectedFile as File).size,
+          sizeBytes: audioTarget.size,
           dataUrl,
           format: ext,
         });
       } catch (audioSaveErr) {
         console.warn("Audio vault save skipped:", audioSaveErr);
       }
-    } catch (storageErr) {
-      console.warn("Failed to persist SRT to Asset Vault:", storageErr);
     }
+
+    setVaultSaved(true);
 
     setProgressState((prev) => ({
       ...prev,
@@ -409,6 +416,45 @@ export default function AudioToSrtTab({
       smartTitle,
     }));
     setViewMode("sync-preview");
+  };
+
+  const handleManualSaveToVault = async () => {
+    if (!srtResult) return;
+    const parsedCues = parseSrtCues(srtResult);
+    const spokenText = parsedCues.map((c) => c.text).join(" ");
+    const smartTitle = generateSmartTitle(spokenText, "Audio Subtitles");
+
+    try {
+      await saveSrtToQueue({
+        name: smartTitle,
+        sourceTab: "audio-to-srt",
+        cuesCount: parsedCues.length,
+        srtContent: srtResult,
+        filename: `${smartTitle.toLowerCase().replace(/\s+/g, "-")}.srt`,
+      });
+
+      if (selectedFile && selectedFile instanceof Blob) {
+        const dataUrl: string = await new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = () => reject(reader.error);
+          reader.readAsDataURL(selectedFile);
+        });
+        const ext = selectedFile.name?.split(".").pop()?.toLowerCase() || "mp3";
+        await saveAudioToQueue({
+          name: smartTitle,
+          sourceTab: "audio-to-srt",
+          durationSeconds: duration,
+          sizeBytes: selectedFile.size,
+          dataUrl,
+          format: ext,
+        });
+      }
+      setVaultSaved(true);
+      setTimeout(() => setVaultSaved(false), 2500);
+    } catch (e) {
+      console.warn("Manual save to vault failed:", e);
+    }
   };
 
   // Long audio: transcribe in 60s WAV chunks, then merge with offsets.
@@ -511,13 +557,17 @@ export default function AudioToSrtTab({
         curEnd = c.end;
       }
     }
-    await finalizeTranscription(mergedSrt, {
-      coveragePct: Math.round(Math.min(1, covered / Math.max(1, totalDuration)) * 100),
-      largestGapSec: Math.round(lg * 10) / 10,
-      largestGapAt: Math.round(lgAt * 10) / 10,
-      retried: false,
-      estimated: baseParams.engine.startsWith("gemini"),
-    });
+    await finalizeTranscription(
+      mergedSrt,
+      {
+        coveragePct: Math.round(Math.min(1, covered / Math.max(1, totalDuration)) * 100),
+        largestGapSec: Math.round(lg * 10) / 10,
+        largestGapAt: Math.round(lgAt * 10) / 10,
+        retried: false,
+        estimated: baseParams.engine.startsWith("gemini"),
+      },
+      file
+    );
     // Urdu mis-detection can also occur in the first chunk — show the banner.
     if (
       /[\u0600-\u06FF]/.test(mergedSrt) &&
@@ -693,7 +743,7 @@ export default function AudioToSrtTab({
                 fileName: selectedFile.name,
               });
             }
-            await finalizeTranscription(data.srtContent, data.timing || null);
+            await finalizeTranscription(data.srtContent, data.timing || null, selectedFile);
             if (data.scriptFix) setScriptFixState(data.scriptFix);
           } catch (parseErr: any) {
             setError("Failed to parse transcription response");
@@ -1292,9 +1342,23 @@ export default function AudioToSrtTab({
               </button>
             </div>
 
-            {/* Actions: Copy, Send to Cleaner, Download */}
+            {/* Actions: Save to Vault, Copy, Send to Cleaner, Download */}
             {srtResult && (
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <button
+                  type="button"
+                  onClick={handleManualSaveToVault}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-md bg-white hover:bg-slate-100 text-xs font-semibold text-slate-700 border border-slate-300 shadow-2xs cursor-pointer"
+                  title="Save or Re-sync SRT and Audio to Asset Vault"
+                >
+                  {vaultSaved ? (
+                    <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  ) : (
+                    <FolderArchive className="w-3.5 h-3.5 text-amber-600" />
+                  )}
+                  <span>{vaultSaved ? "Saved to Vault" : "Save to Vault"}</span>
+                </button>
+
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(srtResult);

@@ -4,7 +4,7 @@
 export interface StoredAudioItem {
   id: string;
   name: string;
-  sourceTab: "studio" | "merger" | "cleaner" | "transcribe";
+  sourceTab: "studio" | "merger" | "cleaner" | "transcribe" | "audio-to-srt";
   createdAt: number;
   durationSeconds: number;
   sizeBytes: number;
@@ -26,7 +26,7 @@ export interface StoredSrtItem {
 }
 
 const DB_NAME = "AudioStudioDB_v2";
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const AUDIO_STORE = "audio_stack";
 const SRT_STORE = "srt_stack";
 export const MAX_AUDIO_LIMIT = 20;
@@ -47,21 +47,58 @@ function openDB(): Promise<IDBDatabase> {
 
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
+    request.onblocked = () => {
+      console.warn("IndexedDB open blocked: another connection has the database open");
+    };
+
     request.onupgradeneeded = (event) => {
       const db = (event.target as IDBOpenDBRequest).result;
+      const tx = (event.target as IDBOpenDBRequest).transaction;
+
       if (!db.objectStoreNames.contains(AUDIO_STORE)) {
         const aStore = db.createObjectStore(AUDIO_STORE, { keyPath: "id" });
         aStore.createIndex("createdAt", "createdAt", { unique: false });
         aStore.createIndex("sourceTab", "sourceTab", { unique: false });
+      } else if (tx) {
+        try {
+          const aStore = tx.objectStore(AUDIO_STORE);
+          if (!aStore.indexNames.contains("createdAt")) {
+            aStore.createIndex("createdAt", "createdAt", { unique: false });
+          }
+          if (!aStore.indexNames.contains("sourceTab")) {
+            aStore.createIndex("sourceTab", "sourceTab", { unique: false });
+          }
+        } catch (e) {
+          console.warn("Could not verify audio indexes:", e);
+        }
       }
+
       if (!db.objectStoreNames.contains(SRT_STORE)) {
         const sStore = db.createObjectStore(SRT_STORE, { keyPath: "id" });
         sStore.createIndex("createdAt", "createdAt", { unique: false });
         sStore.createIndex("sourceTab", "sourceTab", { unique: false });
+      } else if (tx) {
+        try {
+          const sStore = tx.objectStore(SRT_STORE);
+          if (!sStore.indexNames.contains("createdAt")) {
+            sStore.createIndex("createdAt", "createdAt", { unique: false });
+          }
+          if (!sStore.indexNames.contains("sourceTab")) {
+            sStore.createIndex("sourceTab", "sourceTab", { unique: false });
+          }
+        } catch (e) {
+          console.warn("Could not verify srt indexes:", e);
+        }
       }
     };
 
-    request.onsuccess = () => resolve(request.result);
+    request.onsuccess = () => {
+      const db = request.result;
+      db.onversionchange = () => {
+        db.close();
+      };
+      resolve(db);
+    };
     request.onerror = () => reject(request.error);
   });
 }
@@ -80,48 +117,74 @@ export async function saveAudioToQueue(
     createdAt: Date.now(),
   };
 
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(AUDIO_STORE, "readwrite");
-    const store = tx.objectStore(AUDIO_STORE);
-
-    store.put(newItem);
-
-    const index = store.index("createdAt");
-    const getAllReq = index.getAll();
-
-    getAllReq.onsuccess = () => {
-      const allItems: StoredAudioItem[] = getAllReq.result || [];
-      if (allItems.length > MAX_AUDIO_LIMIT) {
-        allItems.sort((a, b) => a.createdAt - b.createdAt);
-        const excessCount = allItems.length - MAX_AUDIO_LIMIT;
-        for (let i = 0; i < excessCount; i++) {
-          store.delete(allItems[i].id);
-        }
+  return await new Promise<StoredAudioItem>((resolve, reject) => {
+    try {
+      if (!db.objectStoreNames.contains(AUDIO_STORE)) {
+        reject(new Error(`Store ${AUDIO_STORE} not found in database`));
+        return;
       }
-    };
+      const tx = db.transaction(AUDIO_STORE, "readwrite");
+      const store = tx.objectStore(AUDIO_STORE);
 
-    tx.oncomplete = () => {
-      notifyVaultUpdate();
-      resolve(newItem);
-    };
-    tx.onerror = () => reject(tx.error);
+      store.put(newItem);
+
+      // FIFO pruning using key cursor — avoids loading massive dataUrls into RAM
+      const countReq = store.count();
+      countReq.onsuccess = () => {
+        const count = countReq.result;
+        if (count > MAX_AUDIO_LIMIT) {
+          const excess = count - MAX_AUDIO_LIMIT;
+          let deleted = 0;
+          try {
+            const index = store.index("createdAt");
+            const cursorReq = index.openKeyCursor(); // ASC order: oldest first
+            cursorReq.onsuccess = () => {
+              const cursor = cursorReq.result;
+              if (cursor && deleted < excess) {
+                store.delete(cursor.primaryKey);
+                deleted++;
+                cursor.continue();
+              }
+            };
+          } catch {
+            // fallback if index missing
+          }
+        }
+      };
+
+      tx.oncomplete = () => {
+        notifyVaultUpdate();
+        resolve(newItem);
+      };
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error("Transaction aborted"));
+    } catch (err) {
+      reject(err);
+    }
   });
 }
 
 export async function getAudioQueue(): Promise<StoredAudioItem[]> {
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(AUDIO_STORE, "readonly");
-      const store = tx.objectStore(AUDIO_STORE);
-      const req = store.getAll();
+    if (!db.objectStoreNames.contains(AUDIO_STORE)) {
+      return [];
+    }
+    return await new Promise<StoredAudioItem[]>((resolve, reject) => {
+      try {
+        const tx = db.transaction(AUDIO_STORE, "readonly");
+        const store = tx.objectStore(AUDIO_STORE);
+        const req = store.getAll();
 
-      req.onsuccess = () => {
-        const items: StoredAudioItem[] = req.result || [];
-        items.sort((a, b) => b.createdAt - a.createdAt);
-        resolve(items.slice(0, MAX_AUDIO_LIMIT));
-      };
-      req.onerror = () => reject(req.error);
+        req.onsuccess = () => {
+          const items: StoredAudioItem[] = req.result || [];
+          items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          resolve(items.slice(0, MAX_AUDIO_LIMIT));
+        };
+        req.onerror = () => reject(req.error);
+      } catch (err) {
+        reject(err);
+      }
     });
   } catch (e) {
     console.warn("Failed to load IndexedDB audio queue:", e);
@@ -130,7 +193,7 @@ export async function getAudioQueue(): Promise<StoredAudioItem[]> {
 }
 
 export async function getLatestAudioByTab(
-  tab: "studio" | "merger" | "cleaner" | "transcribe"
+  tab: "studio" | "merger" | "cleaner" | "transcribe" | "audio-to-srt"
 ): Promise<StoredAudioItem | null> {
   const all = await getAudioQueue();
   const match = all.find((item) => item.sourceTab === tab);
@@ -139,29 +202,39 @@ export async function getLatestAudioByTab(
 
 export async function deleteAudioFromQueue(id: string): Promise<void> {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(AUDIO_STORE, "readwrite");
-    const store = tx.objectStore(AUDIO_STORE);
-    store.delete(id);
-    tx.oncomplete = () => {
-      notifyVaultUpdate();
-      resolve();
-    };
-    tx.onerror = () => reject(tx.error);
+  if (!db.objectStoreNames.contains(AUDIO_STORE)) return;
+  return await new Promise<void>((resolve, reject) => {
+    try {
+      const tx = db.transaction(AUDIO_STORE, "readwrite");
+      const store = tx.objectStore(AUDIO_STORE);
+      store.delete(id);
+      tx.oncomplete = () => {
+        notifyVaultUpdate();
+        resolve();
+      };
+      tx.onerror = () => reject(tx.error);
+    } catch (err) {
+      reject(err);
+    }
   });
 }
 
 export async function clearAudioQueue(): Promise<void> {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(AUDIO_STORE, "readwrite");
-    const store = tx.objectStore(AUDIO_STORE);
-    store.clear();
-    tx.oncomplete = () => {
-      notifyVaultUpdate();
-      resolve();
-    };
-    tx.onerror = () => reject(tx.error);
+  if (!db.objectStoreNames.contains(AUDIO_STORE)) return;
+  return await new Promise<void>((resolve, reject) => {
+    try {
+      const tx = db.transaction(AUDIO_STORE, "readwrite");
+      const store = tx.objectStore(AUDIO_STORE);
+      store.clear();
+      tx.oncomplete = () => {
+        notifyVaultUpdate();
+        resolve();
+      };
+      tx.onerror = () => reject(tx.error);
+    } catch (err) {
+      reject(err);
+    }
   });
 }
 
@@ -189,48 +262,74 @@ export async function saveSrtToQueue(
     createdAt: Date.now(),
   };
 
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(SRT_STORE, "readwrite");
-    const store = tx.objectStore(SRT_STORE);
-
-    store.put(newItem);
-
-    const index = store.index("createdAt");
-    const getAllReq = index.getAll();
-
-    getAllReq.onsuccess = () => {
-      const allItems: StoredSrtItem[] = getAllReq.result || [];
-      if (allItems.length > MAX_SRT_LIMIT) {
-        allItems.sort((a, b) => a.createdAt - b.createdAt);
-        const excessCount = allItems.length - MAX_SRT_LIMIT;
-        for (let i = 0; i < excessCount; i++) {
-          store.delete(allItems[i].id);
-        }
+  return await new Promise<StoredSrtItem>((resolve, reject) => {
+    try {
+      if (!db.objectStoreNames.contains(SRT_STORE)) {
+        reject(new Error(`Store ${SRT_STORE} not found in database`));
+        return;
       }
-    };
+      const tx = db.transaction(SRT_STORE, "readwrite");
+      const store = tx.objectStore(SRT_STORE);
 
-    tx.oncomplete = () => {
-      notifyVaultUpdate();
-      resolve(newItem);
-    };
-    tx.onerror = () => reject(tx.error);
+      store.put(newItem);
+
+      // FIFO pruning using key cursor
+      const countReq = store.count();
+      countReq.onsuccess = () => {
+        const count = countReq.result;
+        if (count > MAX_SRT_LIMIT) {
+          const excess = count - MAX_SRT_LIMIT;
+          let deleted = 0;
+          try {
+            const index = store.index("createdAt");
+            const cursorReq = index.openKeyCursor(); // ASC order: oldest first
+            cursorReq.onsuccess = () => {
+              const cursor = cursorReq.result;
+              if (cursor && deleted < excess) {
+                store.delete(cursor.primaryKey);
+                deleted++;
+                cursor.continue();
+              }
+            };
+          } catch {
+            // fallback
+          }
+        }
+      };
+
+      tx.oncomplete = () => {
+        notifyVaultUpdate();
+        resolve(newItem);
+      };
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error || new Error("Transaction aborted"));
+    } catch (err) {
+      reject(err);
+    }
   });
 }
 
 export async function getSrtQueue(): Promise<StoredSrtItem[]> {
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction(SRT_STORE, "readonly");
-      const store = tx.objectStore(SRT_STORE);
-      const req = store.getAll();
+    if (!db.objectStoreNames.contains(SRT_STORE)) {
+      return [];
+    }
+    return await new Promise<StoredSrtItem[]>((resolve, reject) => {
+      try {
+        const tx = db.transaction(SRT_STORE, "readonly");
+        const store = tx.objectStore(SRT_STORE);
+        const req = store.getAll();
 
-      req.onsuccess = () => {
-        const items: StoredSrtItem[] = req.result || [];
-        items.sort((a, b) => b.createdAt - a.createdAt);
-        resolve(items.slice(0, MAX_SRT_LIMIT));
-      };
-      req.onerror = () => reject(req.error);
+        req.onsuccess = () => {
+          const items: StoredSrtItem[] = req.result || [];
+          items.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+          resolve(items.slice(0, MAX_SRT_LIMIT));
+        };
+        req.onerror = () => reject(req.error);
+      } catch (err) {
+        reject(err);
+      }
     });
   } catch (e) {
     console.warn("Failed to load IndexedDB SRT queue:", e);
@@ -240,28 +339,38 @@ export async function getSrtQueue(): Promise<StoredSrtItem[]> {
 
 export async function deleteSrtFromQueue(id: string): Promise<void> {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(SRT_STORE, "readwrite");
-    const store = tx.objectStore(SRT_STORE);
-    store.delete(id);
-    tx.oncomplete = () => {
-      notifyVaultUpdate();
-      resolve();
-    };
-    tx.onerror = () => reject(tx.error);
+  if (!db.objectStoreNames.contains(SRT_STORE)) return;
+  return await new Promise<void>((resolve, reject) => {
+    try {
+      const tx = db.transaction(SRT_STORE, "readwrite");
+      const store = tx.objectStore(SRT_STORE);
+      store.delete(id);
+      tx.oncomplete = () => {
+        notifyVaultUpdate();
+        resolve();
+      };
+      tx.onerror = () => reject(tx.error);
+    } catch (err) {
+      reject(err);
+    }
   });
 }
 
 export async function clearSrtQueue(): Promise<void> {
   const db = await openDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(SRT_STORE, "readwrite");
-    const store = tx.objectStore(SRT_STORE);
-    store.clear();
-    tx.oncomplete = () => {
-      notifyVaultUpdate();
-      resolve();
-    };
-    tx.onerror = () => reject(tx.error);
+  if (!db.objectStoreNames.contains(SRT_STORE)) return;
+  return await new Promise<void>((resolve, reject) => {
+    try {
+      const tx = db.transaction(SRT_STORE, "readwrite");
+      const store = tx.objectStore(SRT_STORE);
+      store.clear();
+      tx.oncomplete = () => {
+        notifyVaultUpdate();
+        resolve();
+      };
+      tx.onerror = () => reject(tx.error);
+    } catch (err) {
+      reject(err);
+    }
   });
 }
