@@ -1312,8 +1312,9 @@ export default function AudioToSrtTab({
         </div>
 
         {/* Right Column: Synchronized Preview Player & SRT Output */}
-        <div className="lg:col-span-7 flex flex-col h-[640px] rounded-2xl bg-white border border-slate-200 shadow-2xs overflow-hidden">
-          {/* Top Bar: Tabs & Action Buttons */}
+        <div className="lg:col-span-7 flex flex-col space-y-3">
+          <div className="flex flex-col h-[600px] rounded-2xl bg-white border border-slate-200 shadow-2xs overflow-hidden">
+            {/* Top Bar: Tabs & Action Buttons */}
           <div className="flex flex-wrap items-center justify-between px-4 py-2.5 border-b border-slate-200 bg-slate-50/80 gap-2">
             {/* View Mode Toggle: Live Sync vs Raw SRT */}
             <div className="flex items-center gap-1 bg-slate-200/70 p-1 rounded-lg text-xs font-bold">
@@ -1342,7 +1343,7 @@ export default function AudioToSrtTab({
               </button>
             </div>
 
-            {/* Actions: Save to Vault, Copy, Send to Cleaner, Download */}
+            {/* Actions: Save to Vault, Copy, Download */}
             {srtResult && (
               <div className="flex items-center gap-1.5 flex-wrap">
                 <button
@@ -1371,23 +1372,13 @@ export default function AudioToSrtTab({
                   <span>{copied ? "Copied" : "Copy"}</span>
                 </button>
 
-                {onSendToSrtCleaner && (
-                  <button
-                    onClick={() => onSendToSrtCleaner(srtResult, selectedFile, initialSourceLabel || "Transcribe tab", contextScript)}
-                    className="flex items-center gap-1.5 px-3 py-1 rounded-md bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs shadow-2xs cursor-pointer"
-                  >
-                    <Scissors className="w-3.5 h-3.5" />
-                    <span>Send to {numberedTitle(ft, "srt-cleaner")} ➔</span>
-                  </button>
-                )}
-
                 <a
                   href={`data:text/plain;charset=utf-8,${encodeURIComponent(srtResult)}`}
                   download={selectedFile ? `${selectedFile.name.replace(/\.[^/.]+$/, "")}.srt` : "subtitles.srt"}
                   className="flex items-center gap-1 px-3 py-1 rounded-md bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-2xs cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Download</span>
+                  <span>Download .SRT</span>
                 </a>
               </div>
             )}
@@ -1963,7 +1954,37 @@ export default function AudioToSrtTab({
             )}
           </div>
         </div>
+
+        {/* Dedicated Next Step Pipeline Action Card */}
+        {srtResult && onSendToSrtCleaner && (
+          <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-amber-50 to-orange-50 border border-amber-300/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 font-mono">
+                  NEXT PIPELINE STEP
+                </span>
+                <span className="text-xs font-bold text-slate-900">
+                  Step 5: {numberedTitle(ft, "srt-cleaner")}
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600">
+                Subtitles generated with acoustic word timestamps! Now polish formatting, create viral 1-3 word reels captions, or fix spelling in SRT Cleaner.
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => onSendToSrtCleaner(srtResult, selectedFile, initialSourceLabel || "Transcribe tab", contextScript)}
+                className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer shadow-sm shadow-amber-500/20"
+              >
+                <Scissors className="w-4 h-4" />
+                <span>Proceed to Step 5: {numberedTitle(ft, "srt-cleaner")} ➔</span>
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
+  </div>
   );
 }

@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import Image from "next/image";
-import { Mic, FileText, Sparkles, Merge, Key, Scissors, Pencil } from "lucide-react";
+import { Mic, FileText, Sparkles, Merge, Key, Scissors, Pencil, ChevronRight } from "lucide-react";
 import {
   FEATURE_NUMBER,
   FEATURE_ORDER,
@@ -86,26 +86,44 @@ export default function Header({
           </div>
         </div>
 
-        {/* Row 2: tabs (scrollable on mobile) */}
-        <nav className="flex items-center gap-1.5 overflow-x-auto py-2 scrollbar-none -mx-1 px-1">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => onTabChange(tab.id)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
-                  isActive
-                    ? "bg-amber-500 text-white shadow-xs shadow-amber-500/20"
-                    : "text-slate-600 hover:text-slate-900 hover:bg-slate-100/80"
-                }`}
-              >
-                {tab.icon}
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </nav>
+        {/* Row 2: Pipeline Stepper Flow (scrollable on mobile) */}
+        <div className="py-2 overflow-x-auto scrollbar-none -mx-1 px-1">
+          <nav className="flex items-center gap-1 min-w-max">
+            {tabs.map((tab, idx) => {
+              const isActive = activeTab === tab.id;
+              const stepNum = idx + 1;
+              const displayLabel = tab.label.replace(/^\d+\.\s*/, "");
+              return (
+                <React.Fragment key={tab.id}>
+                  <button
+                    onClick={() => onTabChange(tab.id)}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
+                      isActive
+                        ? "bg-amber-500 text-slate-950 font-bold shadow-xs shadow-amber-500/20 ring-1 ring-amber-400"
+                        : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+                    }`}
+                  >
+                    <span
+                      className={`w-4 h-4 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                        isActive
+                          ? "bg-slate-950 text-amber-400"
+                          : "bg-slate-200 text-slate-700"
+                      }`}
+                    >
+                      {stepNum}
+                    </span>
+                    <span className="shrink-0">{tab.icon}</span>
+                    <span>{displayLabel}</span>
+                  </button>
+
+                  {idx < tabs.length - 1 && (
+                    <ChevronRight className="w-3.5 h-3.5 text-slate-300 shrink-0 mx-0.5" />
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </nav>
+        </div>
       </div>
 
       {/* Rename Features Modal */}

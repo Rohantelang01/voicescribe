@@ -342,22 +342,61 @@ export default function AudioMergerTab({
 
           {/* Merged Result */}
           {mergedResult && (
-            <div className="p-5 rounded-2xl bg-white border border-emerald-300 shadow-2xs space-y-4">
-              <div className="flex items-center justify-between">
+            <div className="p-5 rounded-2xl bg-white border border-emerald-300 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0 shadow-2xs">
                     <CheckCircle2 className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900">Merged Audio Ready</h4>
-                    <p className="text-xs text-slate-500">
-                      Duration: {Math.round(mergedResult.durationSeconds)}s &bull;{" "}
-                      {(mergedResult.sizeBytes / 1024 / 1024).toFixed(2)} MB
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-bold text-slate-900">Merged Audio Ready</h4>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                        {fileList.length} Tracks Combined
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Duration: <b className="text-slate-800">{Math.round(mergedResult.durationSeconds)}s</b> &bull; Size:{" "}
+                      <b className="text-slate-800">{(mergedResult.sizeBytes / 1024 / 1024).toFixed(2)} MB</b>
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
+                  <a
+                    href={mergedResult.audioDataUrl}
+                    download={mergedResult.filename}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-800 text-xs font-semibold border border-slate-300 transition-colors shadow-2xs cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 text-slate-600" />
+                    <span>Download Merged Audio</span>
+                  </a>
+                </div>
+              </div>
+
+              <StudioAudioPlayer
+                src={mergedResult.audioDataUrl}
+                title={mergedResult.filename}
+                downloadFilename={mergedResult.filename}
+              />
+
+              {/* Dedicated Next Step Pipeline Action Card */}
+              <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-amber-50 to-orange-50 border border-amber-300/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 font-mono">
+                      NEXT PIPELINE STEP
+                    </span>
+                    <span className="text-xs font-bold text-slate-900">
+                      Step 3: {numberedTitle(ft, "cleaner")}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600">
+                    Clean room noise, trim pause gaps, and master vocal frequencies for background music (BGM) coexistence.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
                   {onSendToCleaner && (
                     <button
                       onClick={() =>
@@ -365,10 +404,10 @@ export default function AudioMergerTab({
                           dataUrlToFile(mergedResult.audioDataUrl, mergedResult.filename)
                         )
                       }
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-all shadow-sm shadow-amber-500/20 cursor-pointer"
                     >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      <span>Send to {numberedTitle(ft, "cleaner")} ➔</span>
+                      <Sparkles className="w-4 h-4" />
+                      <span>Proceed to Step 3: {numberedTitle(ft, "cleaner")} ➔</span>
                     </button>
                   )}
 
@@ -379,29 +418,14 @@ export default function AudioMergerTab({
                           dataUrlToFile(mergedResult.audioDataUrl, mergedResult.filename)
                         )
                       }
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white text-xs font-bold transition-colors shadow-2xs cursor-pointer"
+                      className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold border border-slate-300 transition-colors shadow-2xs cursor-pointer"
+                      title="Skip Cleaner and jump directly to Subtitles"
                     >
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>Send to {numberedTitle(ft, "transcribe")} ➔</span>
+                      <span>Skip to Step 4 ➔</span>
                     </button>
                   )}
-
-                  <a
-                    href={mergedResult.audioDataUrl}
-                    download={mergedResult.filename}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition-colors shadow-2xs cursor-pointer"
-                  >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>Download</span>
-                  </a>
                 </div>
               </div>
-
-              <StudioAudioPlayer
-                src={mergedResult.audioDataUrl}
-                title={mergedResult.filename}
-                downloadFilename={mergedResult.filename}
-              />
             </div>
           )}
         </div>

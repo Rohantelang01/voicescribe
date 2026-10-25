@@ -294,6 +294,7 @@ export default function Home() {
               initialScript={pipelineScript}
               initialScriptLabel={pipelineScriptLabel}
               onClearScript={handleClearCleanerScript}
+              onStartNewProject={() => setActiveTab("studio")}
             />
           </div>
         </main>

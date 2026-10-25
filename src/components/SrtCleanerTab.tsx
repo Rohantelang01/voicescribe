@@ -15,6 +15,8 @@ import {
   Cpu,
   AlertCircle,
   RefreshCw,
+  CheckCircle2,
+  RotateCcw,
 } from "lucide-react";
 import { TTSPoolState } from "@/lib/tts-projects";
 import { saveSrtToQueue } from "@/lib/audio-storage";
@@ -69,6 +71,7 @@ interface SrtCleanerTabProps {
   initialScript?: string | null;
   initialScriptLabel?: string | null;
   onClearScript?: () => void;
+  onStartNewProject?: () => void;
 }
 
 const CLEANER_LS_KEY = "audioStudio.srtCleaner.v1";
@@ -106,6 +109,7 @@ export default function SrtCleanerTab({
   initialScript,
   initialScriptLabel,
   onClearScript,
+  onStartNewProject,
 }: SrtCleanerTabProps) {
   // Mount par FRESH pipeline props ko priority (stale localStorage draft ke upar) —
   // tabs mounted rehte hain, aur reload par props null hote hain (tab draft kaam aata hai).
@@ -635,6 +639,64 @@ export default function SrtCleanerTab({
               audioName={audioFile?.name}
               emptyHint="Transform dabao — output yahan live preview (Reel screen + karaoke sync) ke saath aayega."
             />
+
+            {/* Pipeline Completed Celebration Banner */}
+            {output && (
+              <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-emerald-50 to-amber-50 border border-emerald-300 shadow-sm space-y-3 mt-3">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-700 shrink-0 mt-0.5 shadow-2xs">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-mono">
+                        🎉 ALL 5 PIPELINE STEPS COMPLETE!
+                      </span>
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-900 mt-1">
+                      Production-Ready Voiceover &amp; Subtitles
+                    </h4>
+                    <p className="text-xs text-slate-600 mt-0.5">
+                      Your voiceover has been created, merged, cleaned &amp; mastered, transcribed, and formatted into production-ready subtitles. Ready to import directly into Premiere Pro, CapCut, or DaVinci Resolve.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-emerald-200/60">
+                  <a
+                    href={`data:text/plain;charset=utf-8,${encodeURIComponent(output)}`}
+                    download={`cleaned-${task}.srt`}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm shadow-emerald-600/20 cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span>Download Final Subtitles (.SRT)</span>
+                  </a>
+
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(output);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 1500);
+                    }}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-semibold text-xs border border-slate-300 shadow-2xs cursor-pointer"
+                  >
+                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-slate-500" />}
+                    <span>{copied ? "Copied to Clipboard!" : "Copy Subtitles"}</span>
+                  </button>
+
+                  {onStartNewProject && (
+                    <button
+                      onClick={onStartNewProject}
+                      className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs cursor-pointer ml-auto"
+                      title="Return to Studio to start a new voiceover project"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Start New Project (Step 1) ↺</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

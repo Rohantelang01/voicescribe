@@ -868,7 +868,7 @@ export default function StudioTab({
           {partBoxes.length > 0 && (
             <button
               onClick={handleResetStudio}
-              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors"
+              className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
               title="Reset Studio (Clear all boxes & audio)"
             >
               <RotateCcw className="w-3.5 h-3.5" />
@@ -876,21 +876,21 @@ export default function StudioTab({
           )}
 
           <button
-            onClick={handleBatchGenerate}
-            disabled={isBatchGenerating || partBoxes.length === 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-800 font-semibold border border-slate-300 disabled:opacity-50 transition-colors shadow-2xs cursor-pointer"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
-            <span>{isBatchGenerating ? "Generating All..." : "Batch Generate Pending"}</span>
-          </button>
-
-          <button
             onClick={handleAddBox}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-800 font-semibold border border-dashed border-slate-400 transition-colors shadow-2xs cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-800 font-semibold border border-slate-300 transition-colors shadow-2xs cursor-pointer text-xs"
             title="Add a new empty script box"
           >
             <Plus className="w-3.5 h-3.5 text-emerald-600" />
             <span>Add Box</span>
+          </button>
+
+          <button
+            onClick={handleBatchGenerate}
+            disabled={isBatchGenerating || partBoxes.length === 0}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-800 font-semibold border border-slate-300 disabled:opacity-50 transition-colors shadow-2xs cursor-pointer text-xs"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+            <span>{isBatchGenerating ? "Generating All..." : "Batch Generate Pending"}</span>
           </button>
 
           {completedCount >= 2 && onSendToMerger && (
@@ -907,10 +907,10 @@ export default function StudioTab({
                   }));
                 onSendToMerger(ready);
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold transition-colors shadow-xs cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition-all shadow-xs cursor-pointer text-xs ring-1 ring-amber-400"
             >
               <Merge className="w-3.5 h-3.5" />
-              <span>Send {completedCount} Parts to {ft.merger} ➔</span>
+              <span>Next: Merge {completedCount} Parts ➔</span>
             </button>
           )}
 
@@ -925,17 +925,17 @@ export default function StudioTab({
                   );
                 }
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold transition-colors shadow-xs cursor-pointer"
+              className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold transition-all shadow-xs cursor-pointer text-xs ring-1 ring-amber-400"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Send to {ft.cleaner} ➔</span>
+              <span>Next: Clean Audio (Step 3) ➔</span>
             </button>
           )}
 
           <button
             onClick={() => setIsMasterModalOpen(true)}
             disabled={completedCount === 0}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-bold disabled:opacity-50 transition-colors shadow-2xs cursor-pointer"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-semibold disabled:opacity-40 transition-colors shadow-2xs cursor-pointer text-xs"
           >
             <Wand2 className="w-3.5 h-3.5 text-amber-400" />
             <span>Master In Studio</span>
@@ -945,54 +945,35 @@ export default function StudioTab({
 
       {/* Master Audio Result Banner */}
       {masterResult && (
-        <div className="p-5 rounded-2xl bg-white border border-emerald-300 shadow-2xs space-y-3">
+        <div className="p-5 rounded-2xl bg-white border border-emerald-300 shadow-sm space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+              <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0 shadow-2xs">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
               <div>
-                <h4 className="text-sm font-bold text-slate-900">
-                  Mastered Voiceover Audio Ready
-                </h4>
-                <p className="text-xs text-slate-600">
-                  Duration: {Math.round(masterResult.durationSeconds)}s &bull; Size:{" "}
-                  {(masterResult.sizeBytes / 1024 / 1024).toFixed(2)} MB
+                <div className="flex items-center gap-2">
+                  <h4 className="text-sm font-bold text-slate-900">
+                    Master Voiceover Audio Ready
+                  </h4>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                    Master Track
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Duration: <b className="text-slate-800">{Math.round(masterResult.durationSeconds)}s</b> &bull; Size:{" "}
+                  <b className="text-slate-800">{(masterResult.sizeBytes / 1024 / 1024).toFixed(2)} MB</b>
                 </p>
               </div>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
-              {onSendToCleaner && (
-                <button
-                  onClick={() => onSendToCleaner(masterResult.audioDataUrl, masterResult.filename)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-semibold text-xs cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5 text-amber-700" />
-                  <span>Send to {ft.cleaner} ➔</span>
-                </button>
-              )}
-
-              {onSendToTranscribe && (
-                <button
-                  onClick={() =>
-                    onSendToTranscribe(
-                      masterResult.audioDataUrl,
-                      masterResult.filename,
-                      partBoxes.map((b) => b.text).join("\n\n")
-                    )
-                  }
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs cursor-pointer"
-                >
-                  <FileText className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Send to {ft.transcribe} ➔</span>
-                </button>
-              )}
-
               <a
                 href={masterResult.audioDataUrl}
                 download={masterResult.filename}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-colors cursor-pointer shadow-xs"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-800 text-xs font-semibold border border-slate-300 transition-colors cursor-pointer shadow-2xs"
               >
-                <Download className="w-3.5 h-3.5" />
+                <Download className="w-3.5 h-3.5 text-slate-600" />
                 <span>Download Audio</span>
               </a>
 
@@ -1026,6 +1007,49 @@ export default function StudioTab({
               ))}
             </div>
           )}
+
+          {/* Master Result Next Pipeline Action Card */}
+          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-300/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 font-mono">
+                  NEXT PIPELINE STEP
+                </span>
+                <span className="text-xs font-bold text-slate-900">
+                  Clean &amp; Master Audio (Step 3)
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600">
+                Remove room noise, trim pause gaps, and optimize audio EQ for BGM coexistence.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {onSendToCleaner && (
+                <button
+                  onClick={() => onSendToCleaner(masterResult.audioDataUrl, masterResult.filename)}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer shadow-sm shadow-amber-500/20"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  <span>Proceed to Step 3: {ft.cleaner} ➔</span>
+                </button>
+              )}
+              {onSendToTranscribe && (
+                <button
+                  onClick={() =>
+                    onSendToTranscribe(
+                      masterResult.audioDataUrl,
+                      masterResult.filename,
+                      partBoxes.map((b) => b.text).join("\n\n")
+                    )
+                  }
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs cursor-pointer"
+                  title="Skip Cleaner and jump directly to Subtitles"
+                >
+                  <span>Skip to Step 4 ➔</span>
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
@@ -1265,42 +1289,9 @@ export default function StudioTab({
                   <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 pt-0.5">
                     <div className="flex items-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                      <span className="font-medium text-slate-700">Ready ({Math.round(box.audioResult.durationSeconds)}s)</span>
+                      <span className="font-medium text-slate-700">Audio Ready ({Math.round(box.audioResult.durationSeconds)}s)</span>
                       <span>&bull;</span>
-                      <span className="font-mono text-slate-600">{box.audioResult.model}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      {onSendToCleaner && (
-                        <button
-                          onClick={() =>
-                            onSendToCleaner(
-                              box.audioResult!.audioDataUrl,
-                              `part_${box.partNumber}_${persona.id}.wav`
-                            )
-                          }
-                          className="flex items-center gap-1 px-2 py-0.5 rounded bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200 text-[10px] font-bold cursor-pointer transition-colors shadow-2xs"
-                          title="Send this part directly to Audio Cleaner"
-                        >
-                          <Sparkles className="w-3 h-3 text-amber-600" />
-                          <span>Send to {ft.cleaner} ➔</span>
-                        </button>
-                      )}
-                      {onSendToTranscribe && (
-                        <button
-                          onClick={() =>
-                            onSendToTranscribe(
-                              box.audioResult!.audioDataUrl,
-                              `part_${box.partNumber}_${persona.id}.wav`,
-                              box.text
-                            )
-                          }
-                          className="flex items-center gap-1 px-2 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-[10px] font-bold cursor-pointer transition-colors shadow-2xs"
-                          title="Send this part directly to Audio to SRT"
-                        >
-                          <FileText className="w-3 h-3 text-slate-600" />
-                          <span>Send to {ft.transcribe} ➔</span>
-                        </button>
-                      )}
+                      <span className="font-mono text-slate-500">{box.audioResult.model}</span>
                     </div>
                   </div>
                 </div>
@@ -1322,9 +1313,150 @@ export default function StudioTab({
           onClick={handleAddBox}
           className="w-full p-3 rounded-xl border border-dashed border-slate-300 bg-white/60 hover:bg-white hover:border-emerald-400 text-slate-500 hover:text-emerald-700 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
         >
-          <Plus className="w-4 h-4" />
+          <Plus className="w-4 h-4 text-emerald-600" />
           <span>Add another script box</span>
         </button>
+
+        {/* ─── Studio Pipeline Guided Action Banner (Step 1 -> Next Step) ─── */}
+        <div className="mt-4 p-4 sm:p-5 rounded-2xl bg-white border border-slate-200 shadow-2xs">
+          {completedCount === 0 ? (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-slate-600">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-200 flex items-center justify-center text-amber-700 shrink-0">
+                  <Sparkles className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-amber-800 font-mono">
+                    PIPELINE STEP 1 &bull; VOICE CREATION
+                  </h4>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Write your script above and click <b>Batch Generate Pending</b> to create your voiceover with <b>{persona.name}</b>.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={handleBatchGenerate}
+                disabled={isBatchGenerating || partBoxes.length === 0}
+                className="flex items-center justify-center gap-2 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-50 text-slate-950 font-bold text-xs cursor-pointer shadow-xs shrink-0"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>{isBatchGenerating ? "Generating..." : "Generate Voiceover Now"}</span>
+              </button>
+            </div>
+          ) : completedCount === 1 ? (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 border border-emerald-300 flex items-center justify-center text-emerald-700 shrink-0 mt-0.5">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-mono">
+                      Step 1 Complete &bull; Single Voiceover
+                    </span>
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-900 mt-1">
+                    Single Voiceover Track Ready!
+                  </h4>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Because you have 1 voiceover part, you can skip Merger and proceed directly to Step 3 ({ft.cleaner}) to master frequencies, remove room noise, and trim silences.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {onSendToCleaner && (
+                  <button
+                    onClick={() => {
+                      const single = partBoxes.find((b) => !!b.audioResult?.audioDataUrl);
+                      if (single && single.audioResult) {
+                        onSendToCleaner(
+                          single.audioResult.audioDataUrl,
+                          `${persona.id}_part_${single.partNumber}.wav`
+                        );
+                      }
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer shadow-sm shadow-amber-500/20"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    <span>Proceed to Step 3: {ft.cleaner} ➔</span>
+                  </button>
+                )}
+
+                {onSendToTranscribe && (
+                  <button
+                    onClick={() => {
+                      const single = partBoxes.find((b) => !!b.audioResult?.audioDataUrl);
+                      if (single && single.audioResult) {
+                        onSendToTranscribe(
+                          single.audioResult.audioDataUrl,
+                          `${persona.id}_part_${single.partNumber}.wav`,
+                          single.text
+                        );
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs border border-slate-300 cursor-pointer"
+                    title="Skip Cleaner and jump directly to Subtitles"
+                  >
+                    <span>Skip to Step 4 ➔</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 border border-amber-300 flex items-center justify-center text-amber-800 shrink-0 mt-0.5">
+                  <Merge className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-mono">
+                      Step 1 Complete &bull; {completedCount} Parts Ready
+                    </span>
+                  </div>
+                  <h4 className="text-sm font-bold text-slate-900 mt-1">
+                    Multi-Part Voiceover Ready to Merge!
+                  </h4>
+                  <p className="text-xs text-slate-600 mt-0.5">
+                    Combine your {completedCount} separate audio parts into a unified voiceover track with customizable pause gaps in {ft.merger}.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2 shrink-0">
+                {onSendToMerger && (
+                  <button
+                    onClick={() => {
+                      const ready: PipelineVoiceoverPart[] = partBoxes
+                        .filter((b) => !!b.audioResult?.audioDataUrl)
+                        .map((b) => ({
+                          id: b.id,
+                          partNumber: b.partNumber,
+                          title: b.title,
+                          dataUrl: b.audioResult!.audioDataUrl,
+                          durationSeconds: b.audioResult!.durationSeconds,
+                        }));
+                      onSendToMerger(ready);
+                    }}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs cursor-pointer shadow-sm shadow-amber-500/20"
+                  >
+                    <Merge className="w-4 h-4" />
+                    <span>Proceed to Step 2: Merge {completedCount} Parts ➔</span>
+                  </button>
+                )}
+
+                <button
+                  onClick={() => setIsMasterModalOpen(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs cursor-pointer"
+                >
+                  <Wand2 className="w-3.5 h-3.5 text-amber-400" />
+                  <span>Master In Studio</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Modal 1: Split Long Script */}

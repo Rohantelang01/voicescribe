@@ -911,34 +911,35 @@ export default function AudioCleanerTab({
           </div>
 
           {cleanedResult ? (
-            <div className="p-5 rounded-2xl bg-white border border-emerald-300 shadow-2xs space-y-4">
-              <div className="flex items-center justify-between">
+            <div className="p-5 rounded-2xl bg-white border border-emerald-300 shadow-sm space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shrink-0">
+                  <div className="w-9 h-9 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0 shadow-2xs">
                     <CheckCircle2 className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900">Audio Mastered (Saved in Stack)</h4>
-                    <p className="text-xs text-slate-500">
-                      Duration: {Math.round(cleanedResult.durationSeconds)}s &bull; Format: {(cleanedResult.format || outputFormat).toUpperCase()} &bull; Persisted in IndexedDB
+                    <div className="flex items-center gap-2">
+                      <h4 className="text-sm font-bold text-slate-900">Vocal Mastering Complete</h4>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                        Vault Saved
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Duration: <b className="text-slate-800">{Math.round(cleanedResult.durationSeconds)}s</b> &bull; Format:{" "}
+                      <b className="text-slate-800 font-mono">{(cleanedResult.format || outputFormat).toUpperCase()}</b>
                     </p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-2">
-                  {onSendToTranscribe && (
-                    <button
-                      onClick={() =>
-                        onSendToTranscribe(
-                          dataUrlToFile(cleanedResult.audioDataUrl, cleanedResult.filename)
-                        )
-                      }
-                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold transition-colors shadow-2xs cursor-pointer"
-                    >
-                      <FileText className="w-3.5 h-3.5" />
-                      <span>Send to {numberedTitle(ft, "transcribe")} ➔</span>
-                    </button>
-                  )}
+                  <a
+                    href={cleanedResult.audioDataUrl}
+                    download={cleanedResult.filename}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 text-slate-800 text-xs font-semibold border border-slate-300 transition-colors shadow-2xs cursor-pointer"
+                  >
+                    <Download className="w-3.5 h-3.5 text-slate-600" />
+                    <span>Download Mastered Audio</span>
+                  </a>
                 </div>
               </div>
 
@@ -949,7 +950,7 @@ export default function AudioCleanerTab({
                 downloadFilename={cleanedResult.filename}
               />
 
-              <div className="space-y-1.5 pt-2 border-t border-slate-100">
+              <div className="space-y-1.5 pt-1 border-t border-slate-100">
                 <span className="text-xs font-semibold text-slate-700">Studio Processing Applied:</span>
                 <div className="flex flex-wrap gap-1.5">
                   {cleanedResult.filtersApplied.map((f, i) => (
@@ -960,6 +961,39 @@ export default function AudioCleanerTab({
                       &check; {f}
                     </span>
                   ))}
+                </div>
+              </div>
+
+              {/* Dedicated Next Step Pipeline Action Card */}
+              <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500/10 via-amber-50 to-orange-50 border border-amber-300/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 font-mono">
+                      NEXT PIPELINE STEP
+                    </span>
+                    <span className="text-xs font-bold text-slate-900">
+                      Step 4: {numberedTitle(ft, "transcribe")}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600">
+                    Vocals are mastered and silence pauses are trimmed. Proceed to generate high-accuracy word-timed subtitles.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {onSendToTranscribe && (
+                    <button
+                      onClick={() =>
+                        onSendToTranscribe(
+                          dataUrlToFile(cleanedResult.audioDataUrl, cleanedResult.filename)
+                        )
+                      }
+                      className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-all shadow-sm shadow-amber-500/20 cursor-pointer"
+                    >
+                      <FileText className="w-4 h-4" />
+                      <span>Proceed to Step 4: {numberedTitle(ft, "transcribe")} ➔</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
