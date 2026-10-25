@@ -537,10 +537,10 @@ export default function SrtCleanerTab({
               <div className="flex items-center gap-2">
                 <input
                   type="number"
-                  min={4}
+                  min={1}
                   max={15}
                   value={maxWordsPerLine}
-                  onChange={(e) => setMaxWordsPerLine(parseInt(e.target.value, 10) || 8)}
+                  onChange={(e) => setMaxWordsPerLine(Math.min(15, Math.max(1, parseInt(e.target.value, 10) || 1)))}
                   className="w-16 px-2 py-1 rounded-lg bg-white border border-slate-300 text-slate-800 font-bold text-center focus:outline-none focus:border-amber-500"
                 />
                 <input

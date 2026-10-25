@@ -592,7 +592,7 @@ FORMATTING REQUIREMENTS:
    00:00:00,000 --> 00:00:02,400
    Subtitle text here
 
-2. Strictly 5 to 8 words per cue for fast-paced viral reading.
+2. Use at most ${maxWordsPerLine} ${maxWordsPerLine === 1 ? "word" : "words"} per cue. Never exceed this limit; shorter cues are allowed at sentence breaks or pauses.
 3. Synchronize timestamps accurately with speech timing.
 4. Output ONLY valid raw SRT content. Do NOT include markdown code fences (\`\`\`), do NOT include conversational greetings or explanations.`,
                 },

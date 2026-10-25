@@ -2,7 +2,7 @@
  * SRT Chunker & Subtitle Formatting Engine
  *
  * Designed for Shorts, Reels, TikTok and YouTube educational videos:
- * - Word count per subtitle cue: Strictly 6 to 8 words max.
+ * - Word count per subtitle cue: Configurable maximum, with 8 words as the default.
  * - Time duration per subtitle cue: ~1.5 to 2.0 seconds max.
  * - Supports Word-level timestamps from Whisper and robust Segment-level proportional splitting.
  * - Includes post-processing `enforceSrtLimits` to guarantee limits even after transliteration.
@@ -107,7 +107,7 @@ export function cuesToSrt(cues: SrtCue[]): string {
 
 /**
  * Builds timed cues from precise Whisper word-level timestamps.
- * Enforces 6 to 8 words per line and max 2.0s duration.
+ * Enforces the configured word limit and max 2.0s duration.
  */
 export function buildCuesFromWords(
   rawWords: WhisperWord[],
@@ -251,7 +251,7 @@ export function buildCuesFromSegments(
 }
 
 /**
- * Generates an SRT string from Whisper response with 6-8 words and ~2s limits.
+ * Generates an SRT string from Whisper response with configured word and timing limits.
  */
 export function generateCustomSrt(
   whisperData: WhisperResponse,
@@ -286,7 +286,7 @@ export function generateCustomSrt(
 }
 
 /**
- * Enforces word count (6-8 words) and time limits (~2.0s) on an existing SRT string.
+ * Enforces the configured word count and time limits (~2.0s) on an existing SRT string.
  */
 export function enforceSrtLimits(
   rawSrt: string,

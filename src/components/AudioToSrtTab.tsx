@@ -1115,10 +1115,10 @@ export default function AudioToSrtTab({
               <div className="flex items-center gap-2">
                 <input
                   type="number"
-                  min={4}
+                  min={1}
                   max={12}
                   value={maxWordsPerLine}
-                  onChange={(e) => setMaxWordsPerLine(parseInt(e.target.value, 10) || 8)}
+                  onChange={(e) => setMaxWordsPerLine(Math.min(12, Math.max(1, parseInt(e.target.value, 10) || 1)))}
                   className="w-16 px-2 py-1 rounded-lg bg-white border border-slate-300 text-slate-800 text-xs font-bold text-center focus:outline-none focus:border-amber-500"
                 />
                 <span className="text-[11px] text-slate-500">words</span>
@@ -1826,7 +1826,7 @@ export default function AudioToSrtTab({
                         <h4 className="text-xs font-bold text-white">4. Subtitle Timing & Word Limits</h4>
                         <p className="text-[11px] text-slate-400">
                           {progressState.currentStepIndex >= 4
-                            ? `Formatting cues to ${minWordsPerLine}-${maxWordsPerLine} words per line`
+                            ? `Maximum ${maxWordsPerLine} ${maxWordsPerLine === 1 ? "word" : "words"} per subtitle cue`
                             : "Waiting for speech tokens..."}
                         </p>
                       </div>
