@@ -5,7 +5,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR"
 
 echo "=========================================================="
-echo "🎙️  Starting Audio Studio (Local FFmpeg & Cloud AI)  🎙️"
+echo "🎙️  Starting VoiceScribe (Local FFmpeg & Cloud AI)  🎙️"
 echo "=========================================================="
 
 PORT=3000

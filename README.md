@@ -50,17 +50,17 @@ Open-source AI audio suite for creators: voiceover studio, audio cleanup, fast s
 ## 🚀 Quickstart
 
 ### Prerequisites
-- **Node.js 20.19+** (Next.js 16 requirement — check with `node --version`), **pnpm 10+** (or npm), **FFmpeg**, **Git**
+- **Node.js 20.19+** (Next.js 16 requirement — check with `node --version`), **pnpm 11+** (install via `npm i -g pnpm@11`), **FFmpeg**, **Git**
 
 ```bash
 # Ubuntu / Debian
 sudo apt update && sudo apt install -y ffmpeg
 
 # macOS (Homebrew)
-brew install ffmpeg
+brew install ffmpeg pnpm
 
-# Windows (Chocolatey)
-choco install ffmpeg
+# Windows (winget / choco)
+winget install Gyan.FFmpeg pnpm.pnpm
 ```
 
 ### Install & Run
@@ -68,8 +68,14 @@ choco install ffmpeg
 ```bash
 git clone https://github.com/Rohantelang01/voicescribe.git
 cd voicescribe
-npm install
-npm run dev
+
+# Recommended (pnpm - matches locked dependencies):
+pnpm install
+pnpm dev
+
+# Or with npm:
+# npm install
+# npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) in your browser. Or use the launcher:
@@ -178,8 +184,8 @@ voicescribe/
 Issues and pull requests are welcome. For larger changes, please open an issue first to discuss what you'd like to change.
 
 ```bash
-pnpm lint     # ESLint
-pnpm build    # Production build check
+pnpm lint     # ESLint (or: npm run lint)
+pnpm build    # Production build check (or: npm run build)
 ```
 
 ---
